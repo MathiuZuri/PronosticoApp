@@ -1,0 +1,48 @@
+﻿@inherits LayoutComponentBase
+
+<RadzenComponents />
+
+@* EL ENVOLTORIO MÁGICO: Aquí controlamos el CSS *@
+<div class="sigepp-app @(esModoOscuro ? "tema-oscuro" : "")">
+
+    <RadzenLayout style="min-height: 100vh;">
+        <RadzenHeader>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-p-2 rz-w-100">
+                
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                    <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                    <RadzenLabel Text="S.I.G.E.P.P. Analíticas" TextStyle="TextStyle.H6" Class="rz-m-0" />
+                </RadzenStack>
+
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Class="rz-pr-4">
+                    <RadzenIcon Icon="@(esModoOscuro ? "dark_mode" : "light_mode")" />
+                    @* El botón ahora solo llama al método *@
+                    <RadzenSwitch Value="@esModoOscuro" Change="@CambiarTema" />
+                </RadzenStack>
+
+            </RadzenStack>
+        </RadzenHeader>
+
+        <RadzenSidebar @bind-Expanded="@sidebarExpanded">
+            <NavMenu />
+        </RadzenSidebar>
+
+        <RadzenBody>
+            <div class="rz-p-4">
+                @Body
+            </div>
+        </RadzenBody>
+    </RadzenLayout>
+
+</div>
+
+@code {
+    bool sidebarExpanded = true;
+    bool esModoOscuro = false;
+
+    void CambiarTema(bool isDark)
+    {
+        esModoOscuro = isDark;
+        StateHasChanged(); // Repinta la UI para aplicar la clase "tema-oscuro"
+    }
+}

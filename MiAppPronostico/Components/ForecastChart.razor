@@ -1,0 +1,155 @@
+@using MiAppPronostico.Models
+@inject IJSRuntime JS
+@using System.Text
+
+@if (Resultado != null)
+{
+    <RadzenCard Class="rz-shadow-5">
+        @* 1. Cabecera y Título *@
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
+            <RadzenText TextStyle="TextStyle.H6" Class="rz-m-0">
+                Análisis: <span style="color: var(--sigepp-primary); font-weight: bold;">@Resultado.MethodName</span>
+            </RadzenText>
+            <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Cálculo Finalizado" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-4 rz-mb-2">
+            <RadzenButton Text="Exportar Excel" Icon="grid_on" ButtonStyle="ButtonStyle.Success" 
+                          Size="ButtonSize.Small" Click="@ExportarExcel" />
+            <RadzenButton Text="Imprimir PDF" Icon="picture_as_pdf" ButtonStyle="ButtonStyle.Danger" 
+                          Size="ButtonSize.Small" Click="@(() => JS.InvokeVoidAsync("window.print"))" />
+        </RadzenStack>
+
+        @* 2. Tarjetas de Métricas (KPIs) *@
+        @if (Resultado.MAE > 0) 
+        {
+            <RadzenRow Gap="1rem" Class="rz-mb-4">
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-text-muted); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted);">Error Medio (MAE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="font-weight: bold;">@($"{Resultado.MAE:0.00}")</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-text-muted); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted);">Precisión (RMSE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="font-weight: bold;">@($"{Resultado.RMSE:0.00}")</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-primary); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted);">Margen de Error (MAPE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="font-weight: bold; color: var(--sigepp-primary);">@($"{Resultado.MAPE:0.00}") %</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        }
+
+        @* 3. Gráfica Visual *@
+        <RadzenChart Style="height: 400px;" Class="rz-mb-6">
+            <RadzenLineSeries Smooth="true" Data="@Resultado.HistoricalData" CategoryProperty="Fecha" Title="Historia" ValueProperty="Valor" Stroke="var(--sigepp-text)">
+                <RadzenMarkers MarkerType="MarkerType.Circle" Size="4" />
+            </RadzenLineSeries>
+            
+            <RadzenLineSeries Smooth="true" Data="@Resultado.ForecastedData" CategoryProperty="Fecha" Title="Pronóstico" ValueProperty="Valor" Stroke="var(--sigepp-primary)">
+                <RadzenMarkers MarkerType="MarkerType.Circle" Size="6" />
+            </RadzenLineSeries>
+
+            <RadzenCategoryAxis Padding="20" FormatString="{0:dd/MM/yy}">
+                <RadzenGridLines Visible="false" />
+            </RadzenCategoryAxis>
+            <RadzenValueAxis>
+                <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+            </RadzenValueAxis>
+            
+            <RadzenLegend Position="LegendPosition.Top" />
+            <RadzenChartTooltipOptions Shared="true" />
+        </RadzenChart>
+
+        @* 4. Tabla de Datos Unificada *@
+        <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-2">Historial y Proyección Detallada</RadzenText>
+        <RadzenDataGrid Data="@DatosCombinados" TItem="DataRowUnificada" 
+                        AllowPaging="true" PageSize="20" AllowSorting="true"
+                        Density="Density.Compact" Class="rz-shadow-2">
+            <Columns>
+                <RadzenDataGridColumn TItem="DataRowUnificada" Title="Estado" Width="120px">
+                    <Template Context="item">
+                        @if (item.EsProyeccion)
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true" Text="Pronóstico" />
+                        }
+                        else
+                        {
+                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" IsPill="true" Text="Histórico" />
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="DataRowUnificada" Property="Fecha" Title="Fecha" FormatString="{0:dd/MM/yyyy}" />
+                
+                <RadzenDataGridColumn TItem="DataRowUnificada" Property="Valor" Title="Valor">
+                    <Template Context="item">
+                        <span style="@(item.EsProyeccion ? "font-weight: bold; color: var(--sigepp-primary);" : "")">
+                            @($"{item.Valor:0.0000}")
+                        </span>
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+}
+
+@code {
+    
+    [Parameter] public ForecastResult? Resultado { get; set; }
+
+    private async Task ExportarExcel()
+    {
+        if (Resultado == null) return;
+
+        // Construimos el CSV manualmente (Rápido y ligero para WASM)
+        var csv = new StringBuilder();
+        csv.AppendLine("Estado,Fecha,Valor");
+
+        foreach (var item in ObtenerDatosUnificados())
+        {
+            csv.AppendLine($"{(item.EsProyeccion ? "Pronostico" : "Historico")},{item.Fecha:dd/MM/yyyy},{item.Valor.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        }
+
+        await JS.InvokeVoidAsync("downloadFile", $"Reporte_SIGEPP_{DateTime.Now:yyyyMMdd}.csv", "text/csv", csv.ToString());
+    }
+
+    // Clase auxiliar interna para manejar la tabla mixta
+    public class DataRowUnificada 
+    {
+        public DateTime Fecha { get; set; }
+        public double Valor { get; set; }
+        public bool EsProyeccion { get; set; }
+    }
+
+    // Lista que combina ambos mundos
+    private List<DataRowUnificada> DatosCombinados => ObtenerDatosUnificados();
+
+    private List<DataRowUnificada> ObtenerDatosUnificados()
+    {
+        if (Resultado == null) return new();
+
+        var lista = new List<DataRowUnificada>();
+
+        // Agregamos históricos
+        lista.AddRange(Resultado.HistoricalData.Select(h => new DataRowUnificada { 
+            Fecha = h.Fecha, 
+            Valor = h.Valor, 
+            EsProyeccion = false 
+        }));
+
+        // Agregamos proyecciones
+        lista.AddRange(Resultado.ForecastedData.Select(f => new DataRowUnificada { 
+            Fecha = f.Fecha, 
+            Valor = f.Valor, 
+            EsProyeccion = true 
+        }));
+
+        // Ordenamos por fecha descendente para ver lo más nuevo (el pronóstico) primero
+        return lista.OrderByDescending(x => x.Fecha).ToList();
+    }
+}

@@ -1,0 +1,405 @@
+/* =========================================
+   PANTALLA DE CARGA INICIAL (SPLASH SCREEN)
+========================================= */
+/* Este contenedor ocupa toda la pantalla mientras WebAssembly descarga */
+#app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: var(--sigepp-bg, #0f172a); /* Fondo oscuro por defecto */
+    color: var(--sigepp-primary, #d4af37);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Animación de pulso para el logo/texto principal */
+.sigepp-loader-brand {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: sigeppPulse 2s infinite ease-in-out;
+    margin-bottom: 2rem;
+}
+
+@keyframes sigeppPulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; text-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+/* La barra de progreso de Blazor rediseñada */
+.loading-progress {
+    position: relative;
+    width: 250px;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Ocultamos los círculos viejos de Microsoft */
+.loading-progress circle { display: none; }
+
+/* Inyectamos una barra de progreso que lee la variable de Blazor */
+.loading-progress::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: var(--blazor-load-percentage, 0%);
+    background: linear-gradient(90deg, #b38728, #fcf6ba);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    transition: width 0.2s ease-out;
+}
+
+/* Texto del porcentaje */
+.loading-progress-text {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #94a3b8;
+    letter-spacing: 1px;
+}
+.loading-progress-text::after {
+    content: "INICIALIZANDO MOTOR " var(--blazor-load-percentage-text, "0%");
+}
+
+/* =========================================
+   INTERFAZ DE ERROR DE BLAZOR (ESTILIZADA)
+========================================= */
+#blazor-error-ui {
+    background: #1e293b;
+    border-top: 3px solid #ef4444; /* Rojo error */
+    color: #f8fafc;
+    bottom: 0;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 9999;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    font-family: inherit;
+}
+#blazor-error-ui .reload {
+    color: #ffd700;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ffd700;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+#blazor-error-ui .reload:hover { background: rgba(255, 215, 0, 0.1); }
+#blazor-error-ui .dismiss { cursor: pointer; font-size: 1.5rem; opacity: 0.8; }
+#blazor-error-ui .dismiss:hover { opacity: 1; }
+
+/* =========================================
+   PALETA  S.I.G.E.P.P. 
+
+/* 1. Definición del Modo Claro (Elegante y Limpio) */
+:root {
+    --sigepp-bg: #f8fafc;          /* Blanco ahumado, muy moderno */
+    --sigepp-surface: #ffffff;     /* Tarjetas blanco puro */
+    --sigepp-text: #334155;        /* Gris oscuro/azulado para lectura */
+    --sigepp-primary: #d4af37;     /* Dorado base para referencias */
+    --sigepp-border: #e2e8f0;      /* Bordes muy tenues */
+
+    /* Variables de Degradado Dorado */
+    --sigepp-gold-gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7);
+}
+
+/* 2. Definición del Modo Oscuro (Estilo "Dark Analytics") */
+.tema-oscuro {
+    --sigepp-bg: #0f172a;          /* Azul noche profundo (mejor que negro puro) */
+    --sigepp-surface: #1e293b;     /* Azul pizarra oscuro para tarjetas */
+    --sigepp-text: #f8fafc;        /* Texto extra blanco */
+    --sigepp-primary: #ffd700;     /* Dorado brillante */
+    --sigepp-border: #334155;      /* Bordes integrados */
+
+    /* Degradado Dorado versión oscura (más contraste) */
+    --sigepp-gold-gradient: linear-gradient(135deg, #d4af37 0%, #aa842b 100%);
+}
+
+/* 3. Inyección forzada a los componentes base de Radzen */
+.sigepp-app {
+    --rz-body-background-color: var(--sigepp-bg);
+    --rz-base-background-color: var(--sigepp-surface);
+    --rz-text-color: var(--sigepp-text);
+    --rz-text-title-color: var(--sigepp-text);
+    --rz-primary: var(--sigepp-primary);
+    --rz-border-color: var(--sigepp-border);
+
+    --rz-header-background-color: var(--sigepp-surface);
+    --rz-header-color: var(--sigepp-text);
+    --rz-panel-menu-background-color: var(--sigepp-surface);
+    --rz-panel-menu-color: var(--sigepp-text);
+    --rz-card-background-color: var(--sigepp-surface);
+    --rz-card-color: var(--sigepp-text);
+
+    background-color: var(--sigepp-bg);
+    color: var(--sigepp-text);
+    transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* =========================================
+   1. PALETA PREMIUM S.I.G.E.P.P. (VARIABLES)
+========================================= */
+
+:root {
+    /* Modo Claro (Elegante y Limpio) */
+    --sigepp-bg: #f8fafc;          /* Blanco ahumado */
+    --sigepp-surface: #ffffff;     /* Tarjetas blanco puro */
+    --sigepp-text: #334155;        /* Gris oscuro para lectura */
+    --sigepp-text-muted: #64748b;  /* Texto secundario/subtítulos */
+    --sigepp-primary: #d4af37;     /* Dorado base */
+    --sigepp-primary-light: rgba(212, 175, 55, 0.1); /* Fondo dorado transparente para hovers */
+    --sigepp-border: #e2e8f0;      /* Bordes muy tenues */
+    --sigepp-success: #16a34a;     /* Verde para mensajes de éxito */
+
+    --sigepp-gold-gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7);
+}
+
+.tema-oscuro {
+    /* Modo Oscuro (Azul Noche Premium) */
+    --sigepp-bg: #0f172a;          /* Azul noche profundo */
+    --sigepp-surface: #1e293b;     /* Azul pizarra para tarjetas */
+    --sigepp-text: #f8fafc;        /* Texto extra blanco */
+    --sigepp-text-muted: #94a3b8;  /* Texto secundario claro */
+    --sigepp-primary: #ffd700;     /* Dorado brillante */
+    --sigepp-primary-light: rgba(255, 215, 0, 0.15); /* Hover oscuro */
+    --sigepp-border: #334155;      /* Bordes integrados */
+    --sigepp-success: #22c55e;     /* Verde brillante para oscuro */
+
+    --sigepp-gold-gradient: linear-gradient(135deg, #d4af37 0%, #aa842b 100%);
+}
+
+/* =========================================
+   2. FORZANDO LA CONSISTENCIA DE TEXTOS EN RADZEN
+========================================= */
+
+/* Hacemos que toda la tipografía de Radzen obedezca a nuestras variables */
+.sigepp-app {
+    background-color: var(--sigepp-bg);
+    color: var(--sigepp-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.sigepp-app .rz-text-h1, .sigepp-app .rz-text-h2, .sigepp-app .rz-text-h3,
+.sigepp-app .rz-text-h4, .sigepp-app .rz-text-h5, .sigepp-app .rz-text-h6,
+.sigepp-app .rz-text-subtitle1, .sigepp-app .rz-text-subtitle2,
+.sigepp-app .rz-text-body1, .sigepp-app .rz-text-body2 {
+    color: var(--sigepp-text) !important;
+    transition: color 0.3s ease;
+}
+
+.sigepp-app .rz-color-success {
+    color: var(--sigepp-success) !important;
+}
+
+/* =========================================
+   3. EFECTOS PREMIUM (Tarjetas y Botones)
+========================================= */
+
+/* Tarjetas con esquinas redondeadas y borde dorado mágico */
+.rz-card {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.rz-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--sigepp-gold-gradient);
+}
+
+.tema-oscuro .rz-card {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+}
+
+/* Botón principal (Pronosticar) */
+.rz-button.rz-button-primary {
+    background: var(--sigepp-gold-gradient) !important;
+    color: #121212 !important; /* Mantenemos oscuro porque el oro es claro */
+    font-weight: bold !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rz-button.rz-button-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5) !important;
+}
+
+/* =========================================
+   4. NAVEGACIÓN Y MENÚ LATERAL
+========================================= */
+
+/* Header (Sombra abajo) */
+.rz-header {
+    background-color: var(--sigepp-surface) !important;
+    border-bottom: 1px solid var(--sigepp-border) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important;
+}
+
+/* Sidebar (Borde a la derecha) */
+.rz-sidebar, .rz-panel-menu {
+    background-color: var(--sigepp-surface) !important;
+    border-right: 1px solid var(--sigepp-border) !important;
+}
+
+.rz-navigation-item-link, .rz-navigation-item-icon, .rz-navigation-item-text, .rz-header .rz-label {
+    color: var(--sigepp-text) !important;
+}
+
+.rz-navigation-item-link:hover {
+    background-color: var(--sigepp-primary-light) !important; /* Fondo suave en lugar de oscuro */
+    border-right: 3px solid var(--sigepp-primary) !important;
+}
+
+/* =========================================
+   5. CONTROLES DE FORMULARIO (Inputs y Zonas)
+========================================= */
+
+/* Inputs, Dropdowns y Cajas numéricas */
+.rz-dropdown, .rz-inputtext, .rz-spinner {
+    background-color: var(--sigepp-bg) !important;
+    color: var(--sigepp-text) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 8px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rz-dropdown-label {
+    color: var(--sigepp-text) !important;
+}
+
+.rz-dropdown:hover, .rz-dropdown.rz-state-focused, .rz-inputtext:hover, .rz-inputtext:focus {
+    border-color: var(--sigepp-primary) !important;
+    box-shadow: 0 0 0 2px var(--sigepp-primary-light) !important; /* Halo de enfoque */
+}
+
+/* Lista del Dropdown */
+.rz-dropdown-panel {
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
+}
+
+.rz-dropdown-items li {
+    color: var(--sigepp-text) !important;
+    transition: background-color 0.1s ease;
+}
+
+/* Efecto al pasar el mouse por las opciones del Dropdown */
+.rz-dropdown-items li:hover {
+    background-color: var(--sigepp-primary-light) !important;
+    color: var(--sigepp-primary) !important;
+    font-weight: 600;
+}
+
+/* Zona de Carga de Archivos */
+.sigepp-upload-zone {
+    border: 2px dashed var(--sigepp-border) !important;
+    border-radius: 12px;
+    background-color: var(--sigepp-bg);
+    color: var(--sigepp-text); /* Texto visible en ambos modos */
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.sigepp-upload-zone:hover {
+    border-color: var(--sigepp-primary) !important;
+    background-color: var(--sigepp-primary-light) !important;
+}
+
+.sigepp-upload-zone input[type="file"] {
+    margin-top: 10px;
+    max-width: 100%;
+    color: var(--sigepp-text-muted); /* Color suave para el texto del input file */
+}
+
+/* =========================================
+   6. ESTILOS DE LA GRÁFICA (SVG y Tooltip)
+========================================= */
+
+/* A. Textos de los ejes y la leyenda (SVG usa 'fill' en lugar de 'color') */
+.sigepp-app .rz-chart text,
+.sigepp-app .rz-tick-text,
+.sigepp-app .rz-legend-item-text {
+    fill: var(--sigepp-text) !important;
+    font-family: inherit !important;
+}
+
+/* B. El cuadrito flotante (Tooltip) al pasar el mouse */
+.rz-chart-tooltip {
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+    color: var(--sigepp-text) !important;
+}
+
+/* Textos dentro del Tooltip */
+.rz-chart-tooltip-title,
+.rz-chart-tooltip-value {
+    color: var(--sigepp-text) !important;
+}
+
+/* Ajuste de las líneas guía (Grid) de la gráfica */
+.rz-grid-line {
+    stroke: var(--sigepp-border) !important;
+    stroke-dasharray: 4; /* Vuelve la línea punteada para que se vea más profesional */
+}
+
+@media print {
+    /* Forzamos a que los contenedores se expandan totalmente */
+    html, body, .sigepp-app, .rz-layout, .rz-body, .rz-column {
+        height: auto !important;
+        overflow: visible !important;
+        position: static !important;
+        display: block !important;
+    }
+
+    /* Ocultamos elementos que no deben ir en el reporte */
+    .rz-sidebar, .rz-header, .rz-button, .sigepp-upload-zone, .rz-panel-menu {
+        display: none !important;
+    }
+
+    /* Ajustamos el contenido principal para usar todo el papel */
+    .rz-body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Evitamos que las tarjetas o la tabla se corten a la mitad de una página */
+    .rz-card {
+        page-break-inside: avoid;
+        border: 1px solid #ddd !important;
+        margin-bottom: 20px !important;
+        box-shadow: none !important;
+    }
+
+    /* Forzamos que la tabla muestre todas sus filas en lugar de solo la parte visible */
+    .rz-datagrid-scrollable-wrapper {
+        height: auto !important;
+    }
+    .rz-datagrid-scrollable-body {
+        height: auto !important;
+        overflow: visible !important;
+    }
+}
