@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forecast Arena</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="manifest.webmanifest" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css">
+</head>
+
+<body>
+    <div id="app">
+        <div class="sigepp-loader-brand">Forecast Arena</div>
+    
+        <div class="loading-progress"></div>
+    
+        <div class="loading-progress-text"></div>
+    </div>
+    
+    <div id="blazor-error-ui">
+        <span>Se ha producido un error crítico en el motor de analíticas.</span>
+        <div>
+            <a href="." class="reload">Reiniciar Sistema</a>
+            <span class="dismiss">🗙</span>
+        </div>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>navigator.serviceWorker.register('service-worker.js');</script>
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+
+    <script>
+        window.downloadFile = (fileName, contentType, content) => {
+            const blazorBlob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blazorBlob);
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName;
+            anchorElement.click();
+            anchorElement.remove();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+
+</html>

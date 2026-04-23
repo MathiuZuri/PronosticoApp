@@ -1,0 +1,391 @@
+/* =========================================
+   1. PANTALLA DE CARGA INICIAL Y ERRORES
+========================================= */
+#app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #0f172a;
+    color: #d4af37;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.sigepp-loader-brand {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: sigeppPulse 2s infinite ease-in-out;
+    margin-bottom: 2rem;
+}
+
+@keyframes sigeppPulse {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; text-shadow: 0 0 20px rgba(212, 175, 55, 0.4); }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.loading-progress {
+    position: relative;
+    width: 250px;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.loading-progress circle { display: none; }
+
+.loading-progress::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: var(--blazor-load-percentage, 0%);
+    background: linear-gradient(90deg, #b38728, #fcf6ba);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    transition: width 0.2s ease-out;
+}
+
+.loading-progress-text {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #94a3b8;
+    letter-spacing: 1px;
+}
+
+.loading-progress-text::after {
+    content: "INICIALIZANDO MOTOR " var(--blazor-load-percentage-text, "0%");
+}
+
+#blazor-error-ui {
+    background: #1e293b;
+    border-top: 3px solid #ef4444;
+    color: #f8fafc;
+    bottom: 0;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+    padding: 1rem 1.5rem;
+    position: fixed;
+    width: 100%;
+    z-index: 9999;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    font-family: inherit;
+}
+
+#blazor-error-ui .reload {
+    color: #ffd700;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ffd700;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+#blazor-error-ui .reload:hover { background: rgba(255, 215, 0, 0.1); }
+#blazor-error-ui .dismiss { cursor: pointer; font-size: 1.5rem; opacity: 0.8; }
+#blazor-error-ui .dismiss:hover { opacity: 1; }
+
+/* =========================================
+   2. PALETA S.I.G.E.P.P. UNIFICADA (VARIABLES)
+========================================= */
+:root {
+    /* Modo Claro - Ajustado para no sentirse "vacío" */
+    --sigepp-bg: #f1f5f9;          /* Gris azulado muy tenue, da profundidad a las tarjetas */
+    --sigepp-surface: #ffffff;     /* Tarjetas blanco puro */
+    --sigepp-text: #334155;        /* Gris oscuro sólido */
+    --sigepp-text-muted: #64748b;  /* Gris secundario */
+    --sigepp-primary: #d4af37;     /* Dorado base */
+    --sigepp-primary-light: rgba(212, 175, 55, 0.1);
+    --sigepp-border: #cbd5e1;      /* Borde un poco más visible */
+    --sigepp-success: #16a34a;
+    --sigepp-gold-gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7);
+    --sigepp-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+}
+
+.tema-oscuro {
+    /* Modo Oscuro - Dark Analytics Premium */
+    --sigepp-bg: #0f172a;          /* Azul noche profundo */
+    --sigepp-surface: #1e293b;     /* Azul pizarra */
+    --sigepp-text: #f8fafc;        /* Blanco brillante */
+    --sigepp-text-muted: #94a3b8;
+    --sigepp-primary: #ffd700;     /* Dorado más vibrante */
+    --sigepp-primary-light: rgba(255, 215, 0, 0.15);
+    --sigepp-border: #334155;
+    --sigepp-success: #22c55e;
+    --sigepp-gold-gradient: linear-gradient(135deg, #d4af37 0%, #aa842b 100%);
+    --sigepp-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* =========================================
+   3. INYECCIÓN NÚCLEO DE RADZEN (FORZAR ESTILOS)
+========================================= */
+.sigepp-app,
+.sigepp-app .rz-layout,
+.sigepp-app .rz-body {
+    background-color: var(--sigepp-bg) !important;
+    color: var(--sigepp-text) !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Forzar textos en todos los niveles */
+.sigepp-app .rz-text-h1, .sigepp-app .rz-text-h2, .sigepp-app .rz-text-h3,
+.sigepp-app .rz-text-h4, .sigepp-app .rz-text-h5, .sigepp-app .rz-text-h6,
+.sigepp-app .rz-text-subtitle1, .sigepp-app .rz-text-subtitle2,
+.sigepp-app .rz-text-body1, .sigepp-app .rz-text-body2,
+.sigepp-app .rz-label, .sigepp-app .rz-tick-text, .sigepp-app text {
+    color: var(--sigepp-text) !important;
+    fill: var(--sigepp-text) !important; /* Para SVGs */
+}
+
+.rz-header .rz-sidebar-toggle,
+.rz-header .rz-sidebar-toggle-button,
+.rz-header .rz-icon,
+.rz-header .rz-navigation-item-icon {
+    color: var(--sigepp-text) !important;
+    transition: color 0.3s ease;
+}
+
+/* Animación de entrada general */
+@keyframes fadeInSlideUp {
+    0% { opacity: 0; transform: translateY(15px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.sigepp-app .rz-color-success { color: var(--sigepp-success) !important; }
+
+/* =========================================
+   4. COMPONENTES PREMIUM (Tarjetas, Botones, Menú)
+========================================= */
+
+.rz-card {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--sigepp-shadow) !important;
+    /* Físicas suaves para el hover */
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease !important;
+    /* Aplicar la animación de entrada */
+    animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Levantamiento 3D al pasar el mouse */
+.rz-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--sigepp-primary-light) !important;
+}
+
+/* Sombra más profunda para el hover en modo claro y oscuro */
+.sigepp-app:not(.tema-oscuro) .rz-card:hover { box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1) !important; }
+.tema-oscuro .rz-card:hover { box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.5) !important; }
+
+.rz-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--sigepp-gold-gradient);
+}
+
+/* BOTONES GENERALES - Efecto Táctil */
+.rz-button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.rz-button:active {
+    transform: scale(0.96) !important; /* El botón se hunde al hacer clic */
+}
+
+/* BOTÓN PRINCIPAL (Dorado) */
+.rz-button.rz-button-primary {
+    background: var(--sigepp-gold-gradient) !important;
+    color: #121212 !important;
+    font-weight: 800 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
+}
+
+.rz-button.rz-button-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5) !important;
+    filter: brightness(1.1); /* Brilla un poco más al pasar el mouse */
+}
+.rz-button.rz-button-primary:active {
+    transform: translateY(1px) scale(0.97) !important;
+}
+
+/* MENÚ Y SIDEBAR */
+.rz-header {
+    background-color: var(--sigepp-surface) !important;
+    border-bottom: 1px solid var(--sigepp-border) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+}
+
+.rz-sidebar, .rz-panel-menu {
+    background-color: var(--sigepp-surface) !important;
+    border-right: 1px solid var(--sigepp-border) !important;
+}
+
+.rz-navigation-item-link {
+    color: var(--sigepp-text) !important;
+    transition: all 0.2s ease;
+}
+
+.rz-navigation-item-link:hover, .rz-navigation-item-wrapper-active {
+    background-color: var(--sigepp-primary-light) !important;
+    border-right: 4px solid var(--sigepp-primary) !important;
+}
+
+/* FORMULARIOS Y CONTROLES */
+.rz-dropdown, .rz-inputtext, .rz-spinner {
+    background-color: var(--sigepp-bg) !important;
+    color: var(--sigepp-text) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 8px !important;
+}
+
+.rz-dropdown:hover, .rz-dropdown.rz-state-focused, .rz-inputtext:hover, .rz-inputtext:focus {
+    border-color: var(--sigepp-primary) !important;
+    box-shadow: 0 0 0 3px var(--sigepp-primary-light) !important;
+}
+
+.rz-dropdown-panel {
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+
+.rz-dropdown-items li {
+    color: var(--sigepp-text) !important;
+}
+
+.rz-dropdown-items li:hover {
+    background-color: var(--sigepp-primary-light) !important;
+    color: var(--sigepp-primary) !important;
+    font-weight: 600;
+}
+
+/* UPLOAD ZONE */
+.sigepp-upload-zone {
+    border: 2px dashed var(--sigepp-border) !important;
+    border-radius: 12px;
+    background-color: var(--sigepp-bg);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: fadeInSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sigepp-upload-zone:hover {
+    border-color: var(--sigepp-primary) !important;
+    background-color: var(--sigepp-primary-light) !important;
+    transform: scale(1.02); /* Crece ligeramente */
+}
+
+/* GRÁFICA Y TOOLTIPS */
+.rz-chart-tooltip {
+    background-color: var(--sigepp-surface) !important;
+    border: 1px solid var(--sigepp-border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+
+.rz-chart-tooltip-title, .rz-chart-tooltip-value { color: var(--sigepp-text) !important; }
+
+.rz-grid-line {
+    stroke: var(--sigepp-border) !important;
+    stroke-dasharray: 4;
+}
+/* A. Forzar a la leyenda a bajar a una nueva línea si no cabe */
+.rz-legend-items {
+    display: flex !important;
+    flex-wrap: wrap !important; /* ¡Esta es la clave para que no se aprieten! */
+    justify-content: center !important;
+    gap: 10px !important;
+    padding-top: 15px !important; /* Separar la leyenda del eje X */
+}
+
+/* B. Asegurar que los textos de la leyenda no se rompan por la mitad de una palabra */
+.rz-legend-item {
+    white-space: nowrap !important;
+    margin-right: 5px !important;
+    margin-bottom: 5px !important;
+}
+
+/* C. Darle un margen extra a la parte inferior del contenedor de la gráfica 
+      para acomodar la leyenda expandida */
+.rz-chart {
+    padding-bottom: 20px !important;
+}
+
+/* =========================================
+   5. REGLAS DE IMPRESIÓN (BLINDADAS)
+========================================= */
+@media print {
+    /* 1. CONFIGURACIÓN FÍSICA */
+    @page { size: landscape; margin: 1cm; }
+
+    /* 2. RESET TOTAL DE ESTRUCTURA (Corregido)
+       Hemos quitado .rz-stack y .rz-card para no romper el diseño horizontal de los KPIs */
+    html, body, #app, .sigepp-app, .rz-layout, .rz-body, .rz-body-content {
+        height: auto !important; min-height: auto !important;
+        overflow: visible !important; display: block !important;
+        position: static !important; background-color: white !important;
+        color: black !important; margin: 0 !important; padding: 0 !important;
+    }
+
+    /* 3. ANULACIÓN DE MODO OSCURO */
+    .tema-oscuro, .tema-oscuro *, [class*="tema-oscuro"] {
+        background-color: white !important; color: black !important; border-color: #ddd !important;
+    }
+
+    /* 4. LIMPIEZA DE UI */
+    .rz-sidebar, .rz-header, .rz-button, .sigepp-upload-zone,
+    .rz-panel-menu, .rz-navigation-item, .rz-layout-toggle,
+    .rz-sidebar-toggle, .rz-sidebar-toggle-button {
+        display: none !important; visibility: hidden !important;
+    }
+
+    /* 5. TABLAS (DataGrid) */
+    .rz-datagrid-table td, .rz-datagrid-table th, .rz-cell-data, .rz-column-title, .rz-cell-data span {
+        color: #000 !important;
+    }
+    .rz-datagrid-scrollable-body, .rz-datagrid-scrollable-wrapper {
+        height: auto !important; overflow: visible !important;
+    }
+
+    /* 6. GRÁFICAS (SVG) - Fix de desbordamiento */
+    .rz-chart {
+        display: block !important;
+        width: 100% !important;
+        height: 350px !important; /* Altura reducida para que entre junto con la tabla */
+        max-height: 350px !important;
+        page-break-inside: avoid !important;
+        overflow: hidden !important; /* ENJAULA LA GRÁFICA: Evita que las líneas se salgan */
+    }
+    .rz-chart svg {
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important; /* Corta cualquier línea que intente salir del marco */
+    }
+    .rz-chart path, .rz-chart circle, .rz-chart line {
+        opacity: 1 !important; filter: none !important; -webkit-filter: none !important;
+    }
+
+    /* 7. COLORES DE IMPRESIÓN */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    .rz-badge-success { background-color: #16a34a !important; color: white !important; }
+    .rz-badge-warning { background-color: #d4af37 !important; color: black !important; }
+
+    .rz-chart path[stroke="var(--sigepp-text)"] { stroke: #444 !important; }
+    .rz-chart path[stroke="var(--sigepp-primary)"] { stroke: #b38728 !important; }
+
+    .rz-notification-item-wrapper, .rz-notification, .rz-growl, .rz-dialog {
+        display: none !important; visibility: hidden !important;
+    }
+    
+}
