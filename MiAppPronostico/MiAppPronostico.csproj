@@ -8,8 +8,6 @@
         
         <PublishTrimmed>true</PublishTrimmed>
         <TrimMode>link</TrimMode>
-
-        <TrimmerRootAssembly Include="MiAppPronostico" />
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,11 +20,19 @@
     </ItemGroup>
 
     <ItemGroup>
+        <TrimmerRootAssembly Include="MiAppPronostico" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js"/>
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="wwwroot\sample-data\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Radzen.Blazor" Version="*" />
     </ItemGroup>
 
 </Project>
