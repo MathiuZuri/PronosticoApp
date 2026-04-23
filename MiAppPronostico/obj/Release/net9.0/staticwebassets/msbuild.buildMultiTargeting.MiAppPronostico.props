@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\MiAppPronostico.props" />
-</Project>
