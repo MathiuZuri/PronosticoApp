@@ -2,71 +2,89 @@
 @using MiAppPronostico.Services
 @using MiAppPronostico.Services.Forecasting
 @using MiAppPronostico.Models
-@using MiAppPronostico.Components
-@using Radzen
-@using Radzen.Blazor
 
 @inject DataService DataService
 @inject IEnumerable<IForecastModel> ModelosPronostico
 
-<RadzenText TextStyle="TextStyle.H3" Class="rz-mb-4 rz-mt-2" Style="font-weight: 700; color: var(--sigepp-text);">
-    <RadzenIcon Icon="query_stats" Style="font-size: 2.5rem; vertical-align: middle; margin-right: 10px; color: var(--sigepp-primary);" />
+<RadzenText TextStyle="TextStyle.H3" Class="rz-mb-4 rz-mt-2" Style="font-weight: 800; letter-spacing: -0.5px;">
+    <RadzenIcon Icon="query_stats" Style="font-size: 2.5rem; vertical-align: middle; margin-right: 12px; color: var(--sigepp-primary);" />
     Panel de Pronósticos
 </RadzenText>
 
 @* --- TARJETA 1: CONFIGURACIÓN DE DATOS --- *@
-<RadzenCard Class="rz-mb-4 rz-shadow-3">
-    <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+<RadzenCard Class="rz-mb-4 rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="settings_input_component" Style="vertical-align: middle; margin-right: 8px;" />
+        1. Estructura de Datos
+    </RadzenText>
+
+    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
         
         <RadzenColumn Size="12" SizeMD="3">
-            @* Usamos el nuevo componente modular *@
-            <FileUploader Label="1. Origen de Datos" OnFileProcessed="HandleFileFromComponent" />
+            <FileUploader Label="Cargar Archivo Excel/CSV" OnFileProcessed="HandleFileFromComponent" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">2. Formato de Fecha</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Formato de Fecha Interno
+            </RadzenText>
             <RadzenDropDown @bind-Value="formatoFechaSeleccionado" Data="@formatosFechaDisponibles" Class="rz-w-100" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">3. Eje X (Temporalidad)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Eje X (Columna de Tiempo)
+            </RadzenText>
             <RadzenDropDown @bind-Value="columnaFecha" Data="@columnasDisponibles" 
-                            Placeholder="Seleccione..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
+                            Placeholder="Seleccione columna..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">4. Eje Y (Métrica)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Eje Y (Métrica a predecir)
+            </RadzenText>
             <RadzenDropDown @bind-Value="columnaValor" Data="@columnasDisponibles" 
-                            Placeholder="Seleccione..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
+                            Placeholder="Seleccione columna..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
         </RadzenColumn>
 
     </RadzenRow>
 </RadzenCard>
 
 @* --- TARJETA 2: MOTOR MATEMÁTICO --- *@
-<RadzenCard Class="rz-mb-4 rz-shadow-3">
+<RadzenCard Class="rz-mb-4 rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="memory" Style="vertical-align: middle; margin-right: 8px;" />
+        2. Configuración del Motor
+    </RadzenText>
+
     <RadzenRow Gap="1.5rem" AlignItems="AlignItems.End">
         
         <RadzenColumn Size="12" SizeMD="4">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">Modelo Estadístico</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Algoritmo Estadístico
+            </RadzenText>
             <RadzenDropDown @bind-Value="metodoSeleccionado" Data="@nombresModelos" Class="rz-w-100" />
         </RadzenColumn>
         
         <RadzenColumn Size="12" SizeMD="2">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">Horizonte (Días)</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Horizonte (Días)
+            </RadzenText>
             <RadzenNumeric @bind-Value="horizonte" Min="1" Max="365" Class="rz-w-100" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2">Ventana / Estacionalidad</RadzenText>
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Ventana / Estacionalidad
+            </RadzenText>
             <RadzenNumeric @bind-Value="parametroExtra" Min="2" Max="365" Class="rz-w-100" 
                            Disabled="@(!RequiereParametroExtra())" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenButton Text="EJECUTAR MODELO" Icon="auto_graph" ButtonStyle="ButtonStyle.Primary" 
+            <RadzenButton Text="EJECUTAR PRONÓSTICO" Icon="auto_graph" ButtonStyle="ButtonStyle.Primary" 
                           Click="@EjecutarPronostico" Class="rz-w-100 rz-p-3" 
-                          Disabled="@(!SePuedeCalcular())" />
+                          Disabled="@(!SePuedeCalcular())" Style="font-weight: bold; letter-spacing: 0.5px;" />
         </RadzenColumn>
 
     </RadzenRow>
@@ -100,7 +118,6 @@
         metodoSeleccionado = nombresModelos.FirstOrDefault() ?? string.Empty;
     }
 
-    // Recibe los datos procesados desde el componente FileUploader
     private void HandleFileFromComponent((byte[] Bytes, string Name) fileData)
     {
         fileBytes = fileData.Bytes;
@@ -111,11 +128,10 @@
             using var ms = new MemoryStream(fileBytes);
             columnasDisponibles = DataService.GetHeaders(ms, fileName);
             
-            // Sugerencia de mapeo automático
             columnaFecha = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("fecha") || c.ToLower().Contains("date")) ?? "";
-            columnaValor = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("valor") || c.ToLower().Contains("close")) ?? "";
+            columnaValor = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("valor") || c.ToLower().Contains("close") || c.ToLower().Contains("demanda")) ?? "";
             
-            resultadoPronostico = null; // Limpiar gráfica anterior
+            resultadoPronostico = null; 
             StateHasChanged();
         }
         catch (Exception ex)
@@ -142,10 +158,8 @@
             var modeloElegido = ModelosPronostico.First(m => m.Name == metodoSeleccionado);
             int? param = RequiereParametroExtra() ? parametroExtra : null;
             
-            // Cálculo del futuro
             resultadoPronostico = modeloElegido.Calculate(datosHistoricos, horizonte, param);
             
-            // Backtesting para Métricas
             int diasPrueba = horizonte;
             if (datosHistoricos.Count > diasPrueba * 2)
             {

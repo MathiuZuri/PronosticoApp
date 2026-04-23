@@ -1,0 +1,1 @@
+F:\proyectC#\MiAppPronostico\PronosticoApp-master\PronosticoApp-master\PronosticoApp-master\MiAppPronostico\bin\Release\net9.0\publish\web.config

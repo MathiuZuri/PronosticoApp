@@ -1,27 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "C:\\C#Text\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj": {}
+    "F:\\proyectC#\\MiAppPronostico\\PronosticoApp-master\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj": {}
   },
   "projects": {
-    "C:\\C#Text\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj": {
+    "F:\\proyectC#\\MiAppPronostico\\PronosticoApp-master\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\C#Text\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj",
+        "projectUniqueName": "F:\\proyectC#\\MiAppPronostico\\PronosticoApp-master\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj",
         "projectName": "MiAppPronostico",
-        "projectPath": "C:\\C#Text\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj",
-        "packagesPath": "C:\\Users\\Estudiante-Redes\\.nuget\\packages\\",
-        "outputPath": "C:\\C#Text\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\obj\\",
+        "projectPath": "F:\\proyectC#\\MiAppPronostico\\PronosticoApp-master\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\MiAppPronostico.csproj",
+        "packagesPath": "C:\\Users\\PC\\.nuget\\packages\\",
+        "outputPath": "F:\\proyectC#\\MiAppPronostico\\PronosticoApp-master\\PronosticoApp-master\\PronosticoApp-master\\MiAppPronostico\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Estudiante-Redes\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\PC\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -40,7 +39,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "10.0.200"
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net9.0": {
@@ -62,13 +61,13 @@
             "Microsoft.NET.ILLink.Tasks": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[9.0.14, )",
+              "version": "[9.0.4, )",
               "autoReferenced": true
             },
             "Microsoft.NET.Sdk.WebAssembly.Pack": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[10.0.5, )",
+              "version": "[9.0.15, )",
               "autoReferenced": true
             },
             "Plotly.Blazor": {
@@ -97,20 +96,8 @@
           "warn": true,
           "downloadDependencies": [
             {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[9.0.14, 9.0.14]"
-            },
-            {
               "name": "Microsoft.NETCore.App.Ref",
-              "version": "[9.0.14, 9.0.14]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Runtime.Mono.browser-wasm",
-              "version": "[9.0.14, 9.0.14]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Ref",
-              "version": "[9.0.14, 9.0.14]"
+              "version": "[9.0.15, 9.0.15]"
             }
           ],
           "frameworkReferences": {
@@ -118,7 +105,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {

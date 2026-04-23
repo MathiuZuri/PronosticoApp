@@ -1,22 +1,23 @@
 ﻿@inherits LayoutComponentBase
 
+@* Componente vital de Radzen para que funcionen las notificaciones y tooltips *@
 <RadzenComponents />
 
-@* EL ENVOLTORIO MÁGICO: Aquí controlamos el CSS *@
+@* EL ENVOLTORIO MÁGICO: Aquí controlamos el CSS global *@
 <div class="sigepp-app @(esModoOscuro ? "tema-oscuro" : "")">
 
     <RadzenLayout style="min-height: 100vh;">
         <RadzenHeader>
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-p-2 rz-w-100">
                 
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
                     <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
-                    <RadzenLabel Text="S.I.G.E.P.P. Analíticas" TextStyle="TextStyle.H6" Class="rz-m-0" />
+                    <RadzenIcon Icon="account_balance" Style="font-size: 1.5rem; color: var(--sigepp-primary);" />
+                    <RadzenLabel Text="Forecast Arena Analíticas" TextStyle="TextStyle.H6" Class="rz-m-0" Style="font-weight: 700; letter-spacing: 0.5px;" />
                 </RadzenStack>
 
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Class="rz-pr-4">
-                    <RadzenIcon Icon="@(esModoOscuro ? "dark_mode" : "light_mode")" />
-                    @* El botón ahora solo llama al método *@
+                    <RadzenIcon Icon="@(esModoOscuro ? "dark_mode" : "light_mode")" Style="color: var(--sigepp-text-muted);" />
                     <RadzenSwitch Value="@esModoOscuro" Change="@CambiarTema" />
                 </RadzenStack>
 
@@ -29,7 +30,9 @@
 
         <RadzenBody>
             <div class="rz-p-4">
-                @Body
+                <CascadingValue Value="esModoOscuro" Name="EsModoOscuro">
+                    @Body
+                </CascadingValue>
             </div>
         </RadzenBody>
     </RadzenLayout>
@@ -43,6 +46,6 @@
     void CambiarTema(bool isDark)
     {
         esModoOscuro = isDark;
-        StateHasChanged(); // Repinta la UI para aplicar la clase "tema-oscuro"
+        StateHasChanged(); 
     }
 }
