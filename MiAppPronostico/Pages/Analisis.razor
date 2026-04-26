@@ -67,12 +67,21 @@
                         <RadzenIcon Icon="leaderboard" Style="margin-right: 8px; color: var(--sigepp-primary);" />
                         Ranking de Precisión
                     </RadzenText>
-                    
-                    <RadzenButton Text="PDF" 
-                                  Icon="picture_as_pdf" 
-                                  ButtonStyle="ButtonStyle.Danger" 
-                                  Size="ButtonSize.Small" 
-                                  Click="@ConfirmarImpresion" />
+    
+                    <div>
+                        <RadzenButton Text="CSV" 
+                                      Icon="file_download" 
+                                      ButtonStyle="ButtonStyle.Success" 
+                                      Size="ButtonSize.Small" 
+                                      Click="@ExportarCSV" 
+                                      Class="rz-mr-2" />
+
+                        <RadzenButton Text="PDF" 
+                                      Icon="picture_as_pdf" 
+                                      ButtonStyle="ButtonStyle.Danger" 
+                                      Size="ButtonSize.Small" 
+                                      Click="@ConfirmarImpresion" />
+                    </div>
                 </RadzenStack>
                 
                 <div style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--sigepp-border); border-radius: 8px; margin-bottom: 1rem;">
@@ -177,15 +186,29 @@
         columnaValor = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("valor") || c.ToLower().Contains("close")) ?? "";
     }
 
-    private void EjecutarTorneo()
+private void EjecutarTorneo()
     {
         if (fileBytes == null) return;
         resultadosComparativos.Clear();
 
         using var ms = new MemoryStream(fileBytes);
-        var historia = DataService.ParseData(ms, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+        
+        // 1. Recibimos la Tupla
+        var parseResult = DataService.ParseData(ms, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+        var historia = parseResult.Datos;
         
         if (historia.Count < horizonte * 2) return;
+
+        // 2. Feedback de Bajas
+        if (parseResult.FilasIgnoradas > 0)
+        {
+            NotificationService.Notify(new NotificationMessage {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Limpieza de Datos",
+                Detail = $"Se ignoraron {parseResult.FilasIgnoradas} filas por no ser legibles.",
+                Duration = 6000
+            });
+        }
 
         var entrenamiento = historia.Take(historia.Count - horizonte).ToList();
         var realidad = historia.Skip(historia.Count - horizonte).Select(d => d.Valor).ToList();
@@ -206,6 +229,39 @@
 
         resultadosComparativos = resultadosComparativos.OrderBy(r => r.MAPE).ToList();
         StateHasChanged();
+    }
+    
+    // Método para exportar el modelo ganador sin backend
+    private async Task ExportarCSV()
+    {
+        if (!resultadosComparativos.Any()) return;
+
+        var modeloGanador = resultadosComparativos.First();
+        var csvContent = new System.Text.StringBuilder();
+        
+        csvContent.AppendLine("Fecha,Valor_Proyectado");
+        
+        foreach (var item in modeloGanador.ForecastedData)
+        {
+            string fecha = item.Fecha.ToString("dd/MM/yyyy");
+            string valor = item.Valor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            csvContent.AppendLine($"{fecha},{valor}");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csvContent.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        
+        string nombreSeguro = modeloGanador.MethodName.Replace(" ", "_");
+        string nombreArchivo = $"Pronostico_Ganador_{nombreSeguro}.csv";
+        
+        string jsScript = "var a = document.createElement('a');" +
+                          $"a.href = 'data:text/csv;base64,{base64}';" +
+                          $"a.download = '{nombreArchivo}';" +
+                          "document.body.appendChild(a);" +
+                          "a.click();" +
+                          "document.body.removeChild(a);";
+        
+        await JS.InvokeVoidAsync("eval", jsScript);
     }
     
     [CascadingParameter(Name = "EsModoOscuro")] 

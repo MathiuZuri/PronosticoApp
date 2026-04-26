@@ -2,6 +2,7 @@
 @using MiAppPronostico.Services
 @using MiAppPronostico.Services.Forecasting
 @using MiAppPronostico.Models
+@inject NotificationService NotificationService
 
 @inject DataService DataService
 @inject IEnumerable<IForecastModel> ModelosPronostico
@@ -144,16 +145,30 @@
 
     private bool SePuedeCalcular() => !string.IsNullOrEmpty(columnaFecha) && !string.IsNullOrEmpty(columnaValor) && fileBytes != null;
 
-    private void EjecutarPronostico()
+private void EjecutarPronostico()
     {
         if (fileBytes == null) return;
 
         try
         {
             using var memoryStream = new MemoryStream(fileBytes);
-            var datosHistoricos = DataService.ParseData(memoryStream, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+            
+            // 1. Recibimos la nueva Tupla del DataService
+            var parseResult = DataService.ParseData(memoryStream, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+            var datosHistoricos = parseResult.Datos;
             
             if (datosHistoricos.Count == 0) return;
+
+            // 2. Feedback de Bajas para el usuario
+            if (parseResult.FilasIgnoradas > 0)
+            {
+                NotificationService.Notify(new NotificationMessage {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Datos Incompletos",
+                    Detail = $"Se leyeron {datosHistoricos.Count} registros con éxito. Se ignoraron {parseResult.FilasIgnoradas} filas por formato incorrecto.",
+                    Duration = 6000
+                });
+            }
 
             var modeloElegido = ModelosPronostico.First(m => m.Name == metodoSeleccionado);
             int? param = RequiereParametroExtra() ? parametroExtra : null;
