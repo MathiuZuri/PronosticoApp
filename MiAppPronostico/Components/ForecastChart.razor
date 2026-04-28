@@ -58,9 +58,23 @@
         </RadzenStack>
 
         @* 4. Gráfica Visual (Con scroll horizontal en móviles) *@
-        <div style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem; margin-bottom: 2rem;">
-            @* Le damos un ancho mínimo a la gráfica para que no se apriete *@
-            <RadzenChart Style="height: 400px; min-width: 600px;">
+        <style>
+            .fix-grafico .rz-tick-text {
+                fill: var(--sigepp-text, #333) !important;
+                font-weight: 600;
+            }
+        </style>
+
+        <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem; margin-bottom: 2rem;">
+            
+            @{
+                // 25 píxeles por punto asegura que las fechas entren perfectas sin rotar
+                int totalPuntos = (Resultado.HistoricalData?.Count ?? 0) + (Resultado.ForecastedData?.Count ?? 0);
+                int anchoDinamico = Math.Max(800, totalPuntos * 25);
+            }
+
+            <RadzenChart Style="@($"height: 400px; min-width: {anchoDinamico}px;")">
+                
                 <RadzenLineSeries Smooth="true" Data="@Resultado.HistoricalData" CategoryProperty="Fecha" Title="Historia" ValueProperty="Valor" Stroke="var(--sigepp-text)">
                     <RadzenMarkers MarkerType="MarkerType.Circle" Size="4" />
                 </RadzenLineSeries>
@@ -69,11 +83,15 @@
                     <RadzenMarkers MarkerType="MarkerType.Circle" Size="6" />
                 </RadzenLineSeries>
 
+                @* Ejes sin la etiqueta Template para que no colapsen *@
                 <RadzenCategoryAxis Padding="30" FormatString="{0:dd/MM/yy}">
                     <RadzenGridLines Visible="false" />
+                    <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
                 </RadzenCategoryAxis>
+
                 <RadzenValueAxis>
                     <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+                    <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
                 </RadzenValueAxis>
                 
                 <RadzenLegend Position="LegendPosition.Top" />

@@ -130,29 +130,49 @@
                     Simulación Multilineal
                 </RadzenText>
                 
-                <div style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem;">
+                @* --- SECCIÓN 3: COMPARATIVA VISUAL --- *@
+                @* Estilo seguro para forzar el color de los textos sin romper las coordenadas *@
+                <style>
+                    .fix-grafico .rz-tick-text {
+                        fill: var(--sigepp-text, #333) !important;
+                        font-weight: 600;
+                    }
+                </style>
+
+                <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem;">
                 
-                    @* AUMENTAMOS EL MIN-WIDTH A 850px y la ALTURA a 450px *@
-                    <RadzenChart Style="height: 450px; min-width: 850px;">
+                    @{
+                        // Lógica simplificada: Le damos 25 píxeles de espacio a CADA punto.
+                        // Al ser tan ancha, Radzen acomoda las fechas solo, sin amontonarlas.
+                        var historiaReal = resultadosComparativos.First().HistoricalData;
+                        var pronostico = resultadosComparativos.First().ForecastedData;
+                        
+                        int totalPuntos = historiaReal.Count + (pronostico?.Count ?? 0);
+                        int anchoDinamico = Math.Max(850, totalPuntos * 25);
+                    }
+
+                    <RadzenChart Style="@($"height: 450px; min-width: {anchoDinamico}px;")">
                     
-                        @* Línea de Historia Fija *@
                         <RadzenLineSeries Smooth="true" Data="@resultadosComparativos.First().HistoricalData" 
                                           CategoryProperty="Fecha" Title="Historia Real" ValueProperty="Valor" Stroke="var(--sigepp-text)">
                             <RadzenMarkers MarkerType="MarkerType.Circle" Size="3" />
                         </RadzenLineSeries>
                     
-                        @* Generamos una línea por cada modelo para ver cómo compiten *@
                         @foreach (var res in resultadosComparativos)
                         {
                             <RadzenLineSeries Smooth="true" Data="@res.ForecastedData" 
                                               CategoryProperty="Fecha" Title="@res.MethodName" ValueProperty="Valor" />
                         }
 
+                        @* Ejes limpios y nativos, el CSS se encarga del color *@
                         <RadzenCategoryAxis Padding="30" FormatString="{0:dd/MMM/yy}">
                             <RadzenGridLines Visible="false" />
+                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
                         </RadzenCategoryAxis>
+
                         <RadzenValueAxis>
                             <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
                         </RadzenValueAxis>
                     
                         <RadzenLegend Position="LegendPosition.Bottom" />
@@ -162,6 +182,20 @@
             </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
+    
+    @if (resultadosComparativos.Any())
+    {
+        <RadzenCard Class="rz-mt-4 rz-p-4" Style="background-color: var(--sigepp-bg-alt); border-left: 6px solid var(--sigepp-primary);">
+            <RadzenText TextStyle="TextStyle.H6" Style="font-weight: bold; margin-bottom: 1rem;">
+                <RadzenIcon Icon="psychology" Class="rz-mr-2" /> Conclusión del Torneo
+            </RadzenText>
+            
+            @* Aquí está la magia: Usamos MarkupString para que Blazor pinte el HTML real *@
+            <div style="color: var(--sigepp-text); font-size: 1rem; line-height: 1.5;">
+                @((MarkupString)NarrativeService.GenerarConclusionTorneo(resultadosComparativos))
+            </div>
+        </RadzenCard>
+    }
 }
 
 @code {
@@ -282,4 +316,5 @@ private void EjecutarTorneo()
 
         await JS.InvokeVoidAsync("window.print");
     }
+    
 }

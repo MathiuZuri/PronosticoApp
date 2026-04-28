@@ -16,6 +16,7 @@ builder.Services.AddRadzenComponents();
 
 // lectura de archivos
 builder.Services.AddScoped<DataService>();
+builder.Services.AddScoped<NarrativeService>();
 // modelos matemáticos
 builder.Services.AddScoped<IForecastModel, MeanModel>();
 builder.Services.AddScoped<IForecastModel, NaiveModel>();

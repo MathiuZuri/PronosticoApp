@@ -94,6 +94,13 @@
 @* --- TARJETA 3: VISUALIZACIÓN Y TABLAS (Componente Modular) --- *@
 <ForecastChart Resultado="@resultadoPronostico" />
 
+@if (resultadoPronostico != null)
+{
+    <RadzenAlert Title="Interpretación Técnica" AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" Icon="info" Class="rz-mt-4">
+        @((MarkupString)NarrativeService.GenerarInterpretacion(resultadoPronostico))
+    </RadzenAlert>
+}
+
 @code {
     private string fileName = string.Empty;
     private List<string> columnasDisponibles = new();
