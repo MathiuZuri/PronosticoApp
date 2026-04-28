@@ -12,7 +12,6 @@ public class DataService
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
     }
 
-    // Método auxiliar privado para elegir el lector correcto
     private IExcelDataReader GetReader(Stream fileStream, string fileName)
     {
         if (fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
@@ -23,15 +22,28 @@ public class DataService
         return ExcelReaderFactory.CreateReader(fileStream);
     }
 
-    // NUEVO: Método sanitizador para limpiar números sucios (M, %, comillas, comas)
+    // MEJORA 3: Sanitización financiera avanzada
     private double? ParsearNumeroRobusto(string? valorCelda)
     {
         if (string.IsNullOrWhiteSpace(valorCelda)) return null;
 
-        // Limpieza básica: quitar comillas y porcentajes
-        string limpio = valorCelda.Replace("\"", "").Replace("%", "").Trim();
+        string limpio = valorCelda.Trim();
 
-        // Manejo de multiplicadores financieros (M = Millones, K = Miles)
+        // Manejo de negativos contables en paréntesis: "(150.50)" -> "-150.50"
+        if (limpio.StartsWith("(") && limpio.EndsWith(")"))
+        {
+            limpio = "-" + limpio.Substring(1, limpio.Length - 2);
+        }
+
+        // Limpieza de símbolos de moneda, comillas, porcentajes y espacios
+        // Eliminamos $, S/ (Soles), €, etc.
+        limpio = limpio.Replace("\"", "")
+                       .Replace("%", "")
+                       .Replace("$", "")
+                       .Replace("S/", "")
+                       .Replace("€", "")
+                       .Trim();
+
         double multiplicador = 1;
         if (limpio.EndsWith("M", StringComparison.OrdinalIgnoreCase))
         {
@@ -44,16 +56,14 @@ public class DataService
             limpio = limpio.Substring(0, limpio.Length - 1);
         }
 
-        // Unificar todo a punto decimal
         limpio = limpio.Replace(",", ".");
 
-        // Parseo seguro
         if (double.TryParse(limpio, NumberStyles.Any, CultureInfo.InvariantCulture, out double resultado))
         {
             return resultado * multiplicador;
         }
 
-        return null; // Si no se pudo salvar el dato, devolvemos null
+        return null; 
     }
 
     public List<string> GetHeaders(Stream fileStream, string fileName)
@@ -77,46 +87,54 @@ public class DataService
         return headers;
     }
 
-public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Stream fileStream, string fileName, string dateColumnName, string valueColumnName, string explicitDateFormat = "Automático")
+    // MEJORA 1: Lectura Row-by-Row sin AsDataSet()
+    public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Stream fileStream, string fileName, string dateColumnName, string valueColumnName, string explicitDateFormat = "Automático")
     {
-        var dataPoints = new List<DataPoint>();
+        var rawDataPoints = new List<DataPoint>();
         int filasIgnoradas = 0;
         int totalFilas = 0;
 
         using (var reader = GetReader(fileStream, fileName))
         {
-            var result = reader.AsDataSet(new ExcelDataSetConfiguration()
+            // 1. Ubicar los índices de las columnas en la primera fila (Cabeceras)
+            int dateColIdx = -1;
+            int valueColIdx = -1;
+
+            if (reader.Read())
             {
-                ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true }
-            });
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var header = reader.GetValue(i)?.ToString()?.Trim();
+                    if (header == dateColumnName) dateColIdx = i;
+                    if (header == valueColumnName) valueColIdx = i;
+                }
+            }
 
-            var dataTable = result.Tables[0];
-
-            if (!dataTable.Columns.Contains(dateColumnName) || !dataTable.Columns.Contains(valueColumnName))
+            if (dateColIdx == -1 || valueColIdx == -1)
             {
                 throw new Exception("Las columnas seleccionadas no existen en el archivo.");
             }
 
-            foreach (DataRow row in dataTable.Rows)
+            // 2. Leer fila por fila directamente del Stream (Ultra ligero en RAM)
+            while (reader.Read())
             {
-                totalFilas++; // Contamos cada fila que intentamos leer
+                totalFilas++;
                 
                 try
                 {
-                    var cellDate = row[dateColumnName];
-                    var cellValue = row[valueColumnName];
+                    var cellDate = reader.GetValue(dateColIdx);
+                    var cellValue = reader.GetValue(valueColIdx);
 
-                    if (cellDate != DBNull.Value && cellValue != DBNull.Value)
+                    if (cellDate != null && cellValue != null)
                     {
                         var valorLimpio = ParsearNumeroRobusto(cellValue.ToString());
                         if (valorLimpio == null)
                         {
-                            filasIgnoradas++; // Sumamos si el número era basura
+                            filasIgnoradas++;
                             continue; 
                         }
                         
                         double valorFinal = valorLimpio.Value;
-                        
                         DateTime fechaFinal = DateTime.MinValue;
                         bool fechaEsValida = false;
 
@@ -149,30 +167,48 @@ public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Str
 
                         if (fechaEsValida && fechaFinal.Year >= 1900)
                         {
-                            dataPoints.Add(new DataPoint
+                            // Guardamos solo la parte de la fecha (ignoramos horas/minutos para agrupar mejor)
+                            rawDataPoints.Add(new DataPoint
                             {
-                                Fecha = fechaFinal,
+                                Fecha = fechaFinal.Date,
                                 Valor = valorFinal
                             });
                         }
                         else
                         {
-                            filasIgnoradas++; // Sumamos si la fecha era inválida
+                            filasIgnoradas++;
                         }
                     }
                     else
                     {
-                        filasIgnoradas++; // Sumamos si alguna celda estaba vacía
+                        filasIgnoradas++;
                     }
                 }
                 catch 
                 { 
-                    filasIgnoradas++; // Sumamos si hubo una explosión inesperada
+                    filasIgnoradas++;
                     continue; 
                 }
             }
         }
         
-        return (dataPoints.OrderBy(d => d.Fecha).ToList(), filasIgnoradas, totalFilas);
+        // MEJORA 2: Agrupación y promedio de fechas duplicadas
+        var datosAgrupados = rawDataPoints
+            .GroupBy(d => d.Fecha)
+            .Select(grupo => new DataPoint
+            {
+                Fecha = grupo.Key,
+                Valor = grupo.Average(x => x.Valor) // Si hay 2 ventas el mismo día, saca el promedio
+            })
+            .OrderBy(d => d.Fecha)
+            .ToList();
+
+        // Calculamos cuántos registros se fusionaron por ser del mismo día
+        int filasFusionadas = rawDataPoints.Count - datosAgrupados.Count;
+        
+        // Puedes sumar las fusionadas a las ignoradas si quieres reflejarlo en la UI, 
+        // o simplemente devolver la lista procesada.
+        
+        return (datosAgrupados, filasIgnoradas, totalFilas);
     }
 }
