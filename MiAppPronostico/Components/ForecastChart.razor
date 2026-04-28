@@ -1,0 +1,249 @@
+@using MiAppPronostico.Models
+@inject IJSRuntime JS
+@using System.Text
+@inject NotificationService NotificationService
+
+@if (Resultado != null)
+{
+    @* TARJETA PRINCIPAL DEL REPORTE (Faltaba la etiqueta de cierre antes) *@
+    <RadzenCard Class="rz-shadow-5 rz-p-4">
+        
+        @* 1. Cabecera Elegante (Restaurada) *@
+        <RadzenRow AlignItems="AlignItems.Center" Class="rz-mb-4" Style="border-bottom: 2px solid var(--sigepp-primary-light); padding-bottom: 1rem;">
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="font-weight: 800; color: var(--sigepp-text);">
+                    <RadzenIcon Icon="insights" Style="vertical-align: middle; margin-right: 8px; color: var(--sigepp-primary);" />
+                    Reporte de Pronóstico: <span style="color: var(--sigepp-primary);">@Resultado.MethodName</span>
+                </RadzenText>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4" Class="rz-text-align-right">
+                <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="Cálculo Finalizado" Style="font-size: 0.9rem; padding: 0.5rem 1rem;" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* 2. Tarjetas de Métricas (KPIs) *@
+        @if (Resultado.MAE > 0) 
+        {
+            <RadzenRow Gap="1.5rem" Class="rz-mb-4">
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-text-muted); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted); font-weight: 600;">Error Medio (MAE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0" Style="font-weight: 800;">@($"{Resultado.MAE:0.00}")</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-text-muted); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted); font-weight: 600;">Precisión (RMSE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0" Style="font-weight: 800;">@($"{Resultado.RMSE:0.00}")</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="4">
+                    <RadzenCard Class="rz-shadow-2 rz-p-3" Style="border-left: 4px solid var(--sigepp-primary); background-color: var(--sigepp-bg);">
+                        <RadzenText TextStyle="TextStyle.Caption" Class="rz-mb-0" Style="color: var(--sigepp-text-muted); font-weight: 600;">Margen de Error (MAPE)</RadzenText>
+                        <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0" Style="font-weight: 800; color: var(--sigepp-primary);">@($"{Resultado.MAPE:0.00}") %</RadzenText>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        }
+
+        @* 3. Botones de Acción (Exportación) *@
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mb-4">
+            <RadzenButton Text="Exportar Excel" Icon="grid_on" ButtonStyle="ButtonStyle.Success" 
+                          Size="ButtonSize.Medium" Click="@ExportarExcel" />
+            <RadzenButton Text="Generar Reporte PDF" 
+                          Icon="picture_as_pdf" 
+                          ButtonStyle="ButtonStyle.Danger" 
+                          Size="ButtonSize.Medium" 
+                          Click="@ConfirmarImpresion" />
+        </RadzenStack>
+
+        @* 4. Gráfica Visual (Con scroll horizontal en móviles) *@
+        <style>
+            .fix-grafico .rz-tick-text {
+                fill: var(--sigepp-text, #333) !important;
+                font-weight: 600;
+            }
+        </style>
+
+        @* 4. Gráfica Visual (Con scroll horizontal en móviles) *@
+        <style>
+            .fix-grafico .rz-tick-text {
+                fill: var(--sigepp-text, #333) !important;
+                font-weight: 600;
+            }
+        </style>
+
+        @* --- NUEVO: CONTROL DE ZOOM --- *@
+        <div class="rz-p-2 rz-mb-2" style="background-color: var(--sigepp-bg-alt); border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Style="margin: 0; font-weight: 600; color: var(--sigepp-text-muted);">
+                <RadzenIcon Icon="zoom_in" Style="vertical-align: middle;" /> Distancia entre puntos:
+            </RadzenText>
+            <RadzenSlider @bind-Value="zoomPuntosHome" Min="5" Max="100" Step="5" Style="flex-grow: 1; max-width: 300px;" />
+            <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0; font-weight: bold; color: var(--sigepp-primary);">
+                @zoomPuntosHome px
+            </RadzenText>
+        </div>
+
+        <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem; margin-bottom: 2rem;">
+            
+            @{
+                // El ancho ahora depende del slider (zoomPuntosHome)
+                int totalPuntos = (Resultado.HistoricalData?.Count ?? 0) + (Resultado.ForecastedData?.Count ?? 0);
+                int anchoDinamico = Math.Max(800, totalPuntos * zoomPuntosHome);
+            }
+
+            <RadzenChart Style="@($"height: 400px; min-width: {anchoDinamico}px;")">
+                
+                <RadzenLineSeries Smooth="true" Data="@Resultado.HistoricalData" CategoryProperty="Fecha" Title="Historia" ValueProperty="Valor" Stroke="var(--sigepp-text)">
+                    <RadzenMarkers MarkerType="MarkerType.Circle" Size="4" />
+                </RadzenLineSeries>
+                
+                <RadzenLineSeries Smooth="true" Data="@Resultado.ForecastedData" CategoryProperty="Fecha" Title="Pronóstico" ValueProperty="Valor" Stroke="var(--sigepp-primary)">
+                    <RadzenMarkers MarkerType="MarkerType.Circle" Size="6" />
+                </RadzenLineSeries>
+
+                <RadzenCategoryAxis Padding="30" FormatString="@FormatoFechaEjeX">
+                    <RadzenGridLines Visible="false" />
+                    <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                </RadzenCategoryAxis>
+
+                <RadzenValueAxis>
+                    <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+                    <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                </RadzenValueAxis>
+                
+                <RadzenLegend Position="LegendPosition.Top" />
+                <RadzenChartTooltipOptions Shared="true" />
+            </RadzenChart>
+        </div>
+
+        @* 5. Tabla de Datos Unificada (Responsiva) *@
+        <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-3" Style="font-weight: 700;">
+            <RadzenIcon Icon="table_view" Style="vertical-align: middle; margin-right: 8px; color: var(--sigepp-primary);" />
+            Historial y Proyección Detallada
+        </RadzenText>
+        
+        <div style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--sigepp-border); border-radius: 8px;">
+            @* Forzamos a la tabla a no bajar de cierto ancho *@
+            <RadzenDataGrid Data="@DatosCombinados" TItem="DataRowUnificada" 
+                            AllowPaging="true" PageSize="40" AllowSorting="true"
+                            Density="Density.Compact" Class="rz-shadow-none"
+                            Style="min-width: 500px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="DataRowUnificada" Title="Estado" Width="140px">
+                        <Template Context="item">
+                            @if (item.EsProyeccion)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true" Text="Pronóstico" Style="font-weight: 600;" />
+                            }
+                            else
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Secondary" IsPill="true" Text="Histórico" Style="font-weight: 600;" />
+                            }
+                        </Template>
+                    </RadzenDataGridColumn>
+                    
+                    <RadzenDataGridColumn TItem="DataRowUnificada" Property="Fecha" Title="Fecha" FormatString="@FormatoFechaEjeX" />
+                    
+                    <RadzenDataGridColumn TItem="DataRowUnificada" Property="Valor" Title="Valor Registrado">
+                        <Template Context="item">
+                            <span style="@(item.EsProyeccion ? "font-weight: bold; color: var(--sigepp-primary);" : "")">
+                                @($"{item.Valor:0.0000}")
+                            </span>
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </div>
+
+    </RadzenCard> @* <-- ¡Esta es la etiqueta que faltaba! *@
+}
+
+@code {
+    
+    [Parameter] public ForecastResult? Resultado { get; set; }
+
+    [Parameter] public string Frecuencia { get; set; } = "Diaria";
+    
+    private int zoomPuntosHome = 25;
+    
+    private string FormatoFechaEjeX => Frecuencia switch
+    {
+        "Mensual" => "{0:MMM yyyy}", // Ej: ene 2024
+        "Anual" => "{0:yyyy}",       // Ej: 2024
+        _ => "{0:dd/MM/yy}"          // Diaria
+    };
+    
+    private async Task ExportarExcel()
+    {
+        if (Resultado == null) return;
+
+        // Construimos el CSV manualmente (Rápido y ligero para WASM)
+        var csv = new StringBuilder();
+        csv.AppendLine("Estado,Fecha,Valor");
+
+        foreach (var item in ObtenerDatosUnificados())
+        {
+            csv.AppendLine($"{(item.EsProyeccion ? "Pronostico" : "Historico")},{item.Fecha:dd/MM/yyyy},{item.Valor.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        }
+
+        await JS.InvokeVoidAsync("downloadFile", $"Reporte_SIGEPP_{DateTime.Now:yyyyMMdd}.csv", "text/csv", csv.ToString());
+    }
+
+    // Clase auxiliar interna para manejar la tabla mixta
+    public class DataRowUnificada 
+    {
+        public DateTime Fecha { get; set; }
+        public double Valor { get; set; }
+        public bool EsProyeccion { get; set; }
+    }
+
+    // Lista que combina ambos mundos
+    private List<DataRowUnificada> DatosCombinados => ObtenerDatosUnificados();
+
+    private List<DataRowUnificada> ObtenerDatosUnificados()
+    {
+        if (Resultado == null) return new();
+
+        var lista = new List<DataRowUnificada>();
+
+        // Agregamos históricos
+        lista.AddRange(Resultado.HistoricalData.Select(h => new DataRowUnificada { 
+            Fecha = h.Fecha, 
+            Valor = h.Valor, 
+            EsProyeccion = false 
+        }));
+
+        // Agregamos proyecciones
+        lista.AddRange(Resultado.ForecastedData.Select(f => new DataRowUnificada { 
+            Fecha = f.Fecha, 
+            Valor = f.Valor, 
+            EsProyeccion = true 
+        }));
+
+        // Ordenamos por fecha descendente para ver lo más nuevo (el pronóstico) primero
+        return lista.OrderByDescending(x => x.Fecha).ToList();
+    }
+    
+    // CAPTURAMOS EL ESTADO DESDE EL LAYOUT
+    [CascadingParameter(Name = "EsModoOscuro")] 
+    public bool AppEnModoOscuro { get; set; }
+
+    private async Task ConfirmarImpresion()
+    {
+        if (AppEnModoOscuro)
+        {
+            // BLOQUEO Y ALARMA
+            NotificationService.Notify(new NotificationMessage { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Impresión Bloqueada", 
+                Detail = "Por estándares de calidad, debe cambiar al MODO CLARO para generar el reporte PDF.", 
+                Duration = 6000 
+            });
+            return; // Detenemos la ejecución aquí
+        }
+
+        // Si está en modo claro, procedemos normal
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

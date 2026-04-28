@@ -1,0 +1,239 @@
+﻿@page "/"
+@using MiAppPronostico.Services
+@using MiAppPronostico.Services.Forecasting
+@using MiAppPronostico.Models
+@inject NotificationService NotificationService
+
+@inject DataService DataService
+@inject IEnumerable<IForecastModel> ModelosPronostico
+
+<RadzenText TextStyle="TextStyle.H3" Class="rz-mb-4 rz-mt-2" Style="font-weight: 800; letter-spacing: -0.5px;">
+    <RadzenIcon Icon="query_stats" Style="font-size: 2.5rem; vertical-align: middle; margin-right: 12px; color: var(--sigepp-primary);" />
+    Panel de Pronósticos
+</RadzenText>
+
+@* --- TARJETA 1: CONFIGURACIÓN DE DATOS --- *@
+<RadzenCard Class="rz-mb-4 rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="settings_input_component" Style="vertical-align: middle; margin-right: 8px;" />
+        1. Estructura de Datos
+    </RadzenText>
+
+    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
+        
+        <RadzenColumn Size="12" SizeMD="3">
+            <FileUploader Label="Cargar Archivo Excel/CSV" OnFileProcessed="HandleFileFromComponent" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Formato de Fecha Interno
+            </RadzenText>
+            <RadzenDropDown @bind-Value="formatoFechaSeleccionado" Data="@formatosFechaDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Eje X (Columna de Tiempo)
+            </RadzenText>
+            <RadzenDropDown @bind-Value="columnaFecha" Data="@columnasDisponibles" 
+                            Placeholder="Seleccione columna..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Eje Y (Métrica a predecir)
+            </RadzenText>
+            <RadzenDropDown @bind-Value="columnaValor" Data="@columnasDisponibles" 
+                            Placeholder="Seleccione columna..." Class="rz-w-100" Disabled="@(!columnasDisponibles.Any())" />
+        </RadzenColumn>
+
+    </RadzenRow>
+</RadzenCard>
+
+@* --- TARJETA 2: MOTOR MATEMÁTICO --- *@
+<RadzenCard Class="rz-mb-4 rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="memory" Style="vertical-align: middle; margin-right: 8px;" />
+        2. Configuración del Motor
+    </RadzenText>
+
+    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.End">
+        
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Algoritmo Estadístico
+            </RadzenText>
+            <RadzenDropDown @bind-Value="metodoSeleccionado" Data="@nombresModelos" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Frecuencia
+            </RadzenText>
+            <RadzenDropDown @bind-Value="frecuenciaSeleccionada" Data="@frecuenciasDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
+        
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Horizonte (Períodos)
+            </RadzenText>
+            <RadzenNumeric @bind-Value="horizonte" Min="1" Max="365" Class="rz-w-100" />
+        </RadzenColumn>
+
+        @* --- MEJORA UX: CAMPO VENTANA CON AYUDA VISUAL --- *@
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted); display: flex; align-items: center;">
+                Ventana
+                <RadzenIcon Icon="help_outline" Style="font-size: 1rem; margin-left: 4px; color: var(--sigepp-primary); cursor: pointer;" 
+                            MouseEnter="@(args => ShowTooltip(args, ObtenerAyudaVentana()))" />
+            </RadzenText>
+            <RadzenNumeric @bind-Value="parametroExtra" Min="2" Max="365" Class="rz-w-100" 
+                           Disabled="@(!RequiereParametroExtra())" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenButton Text="EJECUTAR" Icon="auto_graph" ButtonStyle="ButtonStyle.Primary" 
+                          Click="@EjecutarPronostico" Class="rz-w-100 rz-p-3" 
+                          Disabled="@(!SePuedeCalcular())" Style="font-weight: bold; letter-spacing: 0.5px;" />
+        </RadzenColumn>
+
+    </RadzenRow>
+</RadzenCard>
+
+@* --- TARJETA 3: VISUALIZACIÓN Y TABLAS (Componente Modular) --- *@
+<ForecastChart Resultado="@resultadoPronostico" Frecuencia="@frecuenciaSeleccionada" />
+
+@if (resultadoPronostico != null)
+{
+    <RadzenAlert Title="Interpretación Técnica" AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" Icon="info" Class="rz-mt-4">
+        @((MarkupString)NarrativeService.GenerarInterpretacion(resultadoPronostico))
+    </RadzenAlert>
+}
+
+@code {
+    private string fileName = string.Empty;
+    private List<string> columnasDisponibles = new();
+    private string columnaFecha = string.Empty;
+    private string columnaValor = string.Empty;
+
+    private List<string> formatosFechaDisponibles = new() 
+    { 
+        "Automático", "dd/MM/yyyy (Día/Mes/Año)", "MM/dd/yyyy (Mes/Día/Año)", "yyyy-MM-dd (Año-Mes-Día)", "d/M/yyyy (Días/Meses sin cero)"
+    };
+    private string formatoFechaSeleccionado = "Automático";
+
+    private byte[]? fileBytes;
+    private List<string> nombresModelos = new();
+    private string metodoSeleccionado = string.Empty;
+    private int horizonte = 7;
+    private int parametroExtra = 5;
+    private ForecastResult? resultadoPronostico;
+    
+    private List<string> frecuenciasDisponibles = new() { "Diaria", "Mensual", "Anual" };
+    private string frecuenciaSeleccionada = "Diaria";
+
+    protected override void OnInitialized()
+    {
+        nombresModelos = ModelosPronostico.Select(m => m.Name).ToList();
+        metodoSeleccionado = nombresModelos.FirstOrDefault() ?? string.Empty;
+    }
+
+    private void HandleFileFromComponent((byte[] Bytes, string Name) fileData)
+    {
+        fileBytes = fileData.Bytes;
+        fileName = fileData.Name;
+        
+        try
+        {
+            using var ms = new MemoryStream(fileBytes);
+            columnasDisponibles = DataService.GetHeaders(ms, fileName);
+            
+            columnaFecha = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("fecha") || c.ToLower().Contains("date")) ?? "";
+            columnaValor = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("valor") || c.ToLower().Contains("close") || c.ToLower().Contains("demanda")) ?? "";
+            
+            resultadoPronostico = null; 
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al procesar cabeceras: {ex.Message}");
+        }
+    }
+
+    private bool RequiereParametroExtra() => metodoSeleccionado.Contains("Móvil") || metodoSeleccionado.Contains("Estacional");
+
+    private bool SePuedeCalcular() => !string.IsNullOrEmpty(columnaFecha) && !string.IsNullOrEmpty(columnaValor) && fileBytes != null;
+
+    private void EjecutarPronostico()
+    {
+        if (fileBytes == null) return;
+
+        try
+        {
+            using var memoryStream = new MemoryStream(fileBytes);
+            
+            // 1. Recibimos la nueva Tupla del DataService
+            var parseResult = DataService.ParseData(memoryStream, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado, frecuenciaSeleccionada);
+            var datosHistoricos = parseResult.Datos;
+            
+            if (datosHistoricos.Count == 0) return;
+
+            // 2. Feedback de Bajas para el usuario
+            if (parseResult.FilasIgnoradas > 0)
+            {
+                NotificationService.Notify(new NotificationMessage {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = "Datos Incompletos",
+                    Detail = $"Se leyeron {datosHistoricos.Count} registros con éxito. Se ignoraron {parseResult.FilasIgnoradas} filas por formato incorrecto.",
+                    Duration = 6000
+                });
+            }
+
+            var modeloElegido = ModelosPronostico.First(m => m.Name == metodoSeleccionado);
+            int? param = RequiereParametroExtra() ? parametroExtra : null;
+            
+            // CORRECCIÓN: Pasar frecuenciaSeleccionada al modelo
+            resultadoPronostico = modeloElegido.Calculate(datosHistoricos, horizonte, param, frecuenciaSeleccionada);
+            
+            int diasPrueba = horizonte;
+            if (datosHistoricos.Count > diasPrueba * 2)
+            {
+                var datosEntrenamiento = datosHistoricos.Take(datosHistoricos.Count - diasPrueba).ToList();
+                var datosReales = datosHistoricos.Skip(datosHistoricos.Count - diasPrueba).Select(d => d.Valor).ToList();
+
+                // CORRECCIÓN: Pasar frecuenciaSeleccionada también a la prueba
+                var prueba = modeloElegido.Calculate(datosEntrenamiento, diasPrueba, param, frecuenciaSeleccionada);
+                var predicciones = prueba.ForecastedData.Select(d => d.Valor).ToList();
+
+                resultadoPronostico.MAE = MetricsHelper.CalculateMAE(datosReales, predicciones);
+                resultadoPronostico.RMSE = MetricsHelper.CalculateRMSE(datosReales, predicciones);
+                resultadoPronostico.MAPE = MetricsHelper.CalculateMAPE(datosReales, predicciones);
+            }
+
+            StateHasChanged(); 
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en el pronóstico: {ex.Message}");
+        }
+    }
+    
+    // Método para mostrar el globo de ayuda (Tooltip)
+    private void ShowTooltip(ElementReference elementReference, string message)
+    {
+        TooltipService.Open(elementReference, message, new TooltipOptions { Position = TooltipPosition.Top, Duration = 4000 });
+    }
+
+    // Lógica dinámica: Qué mensaje mostrar según el algoritmo elegido
+    private string ObtenerAyudaVentana()
+    {
+        if (metodoSeleccionado.Contains("Móvil"))
+            return "Indica cuántos períodos pasados promediar. Ej: Si pones 5, el pronóstico de mañana será el promedio de los últimos 5 días.";
+            
+        if (metodoSeleccionado.Contains("Estacional"))
+            return "Indica la duración de tu ciclo. Ej: Si tus ventas suben cada fin de semana, pon 7. El modelo copiará lo que pasó hace 7 días.";
+
+        return "Este modelo matemático no requiere una ventana. Se calcula automáticamente usando toda tu historia o el último dato disponible.";
+    }
+}

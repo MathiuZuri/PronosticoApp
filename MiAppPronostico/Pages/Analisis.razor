@@ -1,0 +1,358 @@
+﻿@page "/analisis"
+@using MiAppPronostico.Services
+@using MiAppPronostico.Services.Forecasting
+@using MiAppPronostico.Models
+@inject IJSRuntime JS
+@inject NotificationService NotificationService
+
+@inject DataService DataService
+@inject IEnumerable<IForecastModel> ModelosPronostico
+
+<RadzenText TextStyle="TextStyle.H3" Class="rz-mb-4 rz-mt-2" Style="font-weight: 800; letter-spacing: -0.5px;">
+    <RadzenIcon Icon="emoji_events" Style="font-size: 2.5rem; vertical-align: middle; margin-right: 12px; color: var(--sigepp-primary);" />
+    Torneo de Modelos
+</RadzenText>
+
+@* --- SECCIÓN 1: CONFIGURACIÓN --- *@
+<RadzenCard Class="rz-mb-4 rz-p-4 rz-shadow-3">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="tune" Style="vertical-align: middle; margin-right: 8px;" />
+        Configuración de Simulación
+    </RadzenText>
+
+<RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="3">
+            <FileUploader Label="Datos para Torneo" OnFileProcessed="HandleFileFromComponent" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Formato Fecha
+            </RadzenText>
+            <RadzenDropDown @bind-Value="formatoFechaSeleccionado" Data="@formatosFechaDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Frecuencia
+            </RadzenText>
+            <RadzenDropDown @bind-Value="frecuenciaSeleccionada" Data="@frecuenciasDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Métrica (Eje Y)
+            </RadzenText>
+            <RadzenDropDown @bind-Value="columnaValor" Data="@columnasDisponibles" Placeholder="Valor..." Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="1">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Períodos
+            </RadzenText>
+            <RadzenNumeric @bind-Value="horizonte" Min="1" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenButton Text="TORNEO" Icon="rocket_launch" ButtonStyle="ButtonStyle.Primary" 
+                          Click="@EjecutarTorneo" Class="rz-w-100 rz-p-3" 
+                          Disabled="@(fileBytes == null || string.IsNullOrEmpty(columnaValor))" 
+                          Style="font-weight: bold; letter-spacing: 0.5px;" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>
+
+@if (resultadosComparativos.Any())
+{
+    <RadzenRow Gap="1.5rem">
+        @* --- SECCIÓN 2: LEADERBOARD (RANKING) --- *@
+        <RadzenColumn Size="12" SizeMD="5">
+            <RadzenCard Class="rz-shadow-5 rz-p-4" Style="height: 100%;">
+                
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
+                    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="font-weight: 800; color: var(--sigepp-text);">
+                        <RadzenIcon Icon="leaderboard" Style="margin-right: 8px; color: var(--sigepp-primary);" />
+                        Ranking de Precisión
+                    </RadzenText>
+    
+                    <div>
+                        <RadzenButton Text="CSV" 
+                                      Icon="file_download" 
+                                      ButtonStyle="ButtonStyle.Success" 
+                                      Size="ButtonSize.Small" 
+                                      Click="@ExportarCSV" 
+                                      Class="rz-mr-2" />
+
+                        <RadzenButton Text="PDF" 
+                                      Icon="picture_as_pdf" 
+                                      ButtonStyle="ButtonStyle.Danger" 
+                                      Size="ButtonSize.Small" 
+                                      Click="@ConfirmarImpresion" />
+                    </div>
+                </RadzenStack>
+                
+                <div style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--sigepp-border); border-radius: 8px; margin-bottom: 1rem;">
+                    <RadzenDataGrid Data="@resultadosComparativos" TItem="ForecastResult" Density="Density.Compact" Style="min-width: 400px;">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ForecastResult" Title="Pos" Width="60px" TextAlign="TextAlign.Center">
+                                <Template Context="res">
+                                    <span style="font-weight: @(resultadosComparativos.IndexOf(res) == 0 ? "800" : "500");">
+                                        @(resultadosComparativos.IndexOf(res) + 1)º
+                                    </span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ForecastResult" Property="MethodName" Title="Modelo">
+                                <Template Context="res">
+                                    <span style="font-weight: @(resultadosComparativos.IndexOf(res) == 0 ? "bold" : "normal");">
+                                        @res.MethodName
+                                    </span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ForecastResult" Property="MAPE" Title="Error (MAPE)" Width="120px">
+                                <Template Context="res">
+                                    <RadzenBadge BadgeStyle="@(resultadosComparativos.IndexOf(res) == 0 ? BadgeStyle.Success : BadgeStyle.Secondary)" 
+                                                 Text="@($"{res.MAPE:0.00} %")" Style="font-weight: 600;" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                </div>
+
+                <div class="rz-p-3" style="background-color: var(--sigepp-bg); border-radius: 8px; border-left: 4px solid var(--sigepp-primary);">
+                    <RadzenText TextStyle="TextStyle.Body2" Style="margin: 0; font-weight: 800; color: var(--sigepp-text);">
+                        Ganador: <span style="color: var(--sigepp-primary);">@resultadosComparativos.First().MethodName</span>
+                    </RadzenText>
+                    <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0; color: var(--sigepp-text-muted);">
+                        Este modelo es el más recomendado para proyectar estos datos.
+                    </RadzenText>
+                </div>
+            </RadzenCard>
+        </RadzenColumn>
+
+        @* --- SECCIÓN 3: COMPARATIVA VISUAL --- *@
+        <RadzenColumn Size="12" SizeMD="7">
+            <RadzenCard Class="rz-shadow-5 rz-p-4" Style="height: 100%;">
+                <RadzenText TextStyle="TextStyle.H5" Class="rz-mb-4" Style="font-weight: 800; color: var(--sigepp-text);">
+                    <RadzenIcon Icon="stacked_line_chart" Style="margin-right: 8px; color: var(--sigepp-primary);" />
+                    Simulación Multilineal
+                </RadzenText>
+                
+                @* --- SECCIÓN 3: COMPARATIVA VISUAL --- *@
+                @* --- SECCIÓN 3: COMPARATIVA VISUAL --- *@
+                <style>
+                    .fix-grafico .rz-tick-text {
+                        fill: var(--sigepp-text, #333) !important;
+                        font-weight: 600;
+                    }
+                </style>
+
+                @* --- NUEVO: CONTROL DE ZOOM --- *@
+                <div class="rz-p-2 rz-mb-2" style="background-color: var(--sigepp-bg-alt); border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="margin: 0; font-weight: 600; color: var(--sigepp-text-muted);">
+                        <RadzenIcon Icon="zoom_in" Style="vertical-align: middle;" /> Distancia entre puntos:
+                    </RadzenText>
+                    <RadzenSlider @bind-Value="zoomPuntosTorneo" Min="5" Max="100" Step="5" Style="flex-grow: 1; max-width: 300px;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0; font-weight: bold; color: var(--sigepp-primary);">
+                        @zoomPuntosTorneo px
+                    </RadzenText>
+                </div>
+
+                <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem;">
+
+                    @{
+                        // El ancho ahora depende del slider (zoomPuntosTorneo)
+                        var historiaReal = resultadosComparativos.First().HistoricalData;
+                        var pronostico = resultadosComparativos.First().ForecastedData;
+                        
+                        int totalPuntos = historiaReal.Count + (pronostico?.Count ?? 0);
+                        int anchoDinamico = Math.Max(850, totalPuntos * zoomPuntosTorneo);
+                    }
+
+                    <RadzenChart Style="@($"height: 450px; min-width: {anchoDinamico}px;")">
+                    
+                        <RadzenLineSeries Smooth="true" Data="@resultadosComparativos.First().HistoricalData" 
+                                          CategoryProperty="Fecha" Title="Historia Real" ValueProperty="Valor" Stroke="var(--sigepp-text)">
+                            <RadzenMarkers MarkerType="MarkerType.Circle" Size="3" />
+                        </RadzenLineSeries>
+                    
+                        @foreach (var res in resultadosComparativos)
+                        {
+                            <RadzenLineSeries Smooth="true" Data="@res.ForecastedData" 
+                                              CategoryProperty="Fecha" Title="@res.MethodName" ValueProperty="Valor" />
+                        }
+
+                        <RadzenCategoryAxis Padding="30" FormatString="@FormatoFechaEjeX">
+                            <RadzenGridLines Visible="false" />
+                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                        </RadzenCategoryAxis>
+
+                        <RadzenValueAxis>
+                            <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                        </RadzenValueAxis>
+                    
+                        <RadzenLegend Position="LegendPosition.Bottom" />
+                        <RadzenChartTooltipOptions Shared="true" />
+                    </RadzenChart>
+                </div>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+    
+    @if (resultadosComparativos.Any())
+    {
+        <RadzenCard Class="rz-mt-4 rz-p-4" Style="background-color: var(--sigepp-bg-alt); border-left: 6px solid var(--sigepp-primary);">
+            <RadzenText TextStyle="TextStyle.H6" Style="font-weight: bold; margin-bottom: 1rem;">
+                <RadzenIcon Icon="psychology" Class="rz-mr-2" /> Conclusión del Torneo
+            </RadzenText>
+            
+            @* Aquí está la magia: Usamos MarkupString para que Blazor pinte el HTML real *@
+            <div style="color: var(--sigepp-text); font-size: 1rem; line-height: 1.5;">
+                @((MarkupString)NarrativeService.GenerarConclusionTorneo(resultadosComparativos))
+            </div>
+        </RadzenCard>
+    }
+}
+
+@code {
+    private byte[]? fileBytes;
+    private string fileName = "";
+    private List<string> columnasDisponibles = new();
+    private string columnaFecha = "";
+    private string columnaValor = "";
+    private int horizonte = 7;
+    private string formatoFechaSeleccionado = "Automático";
+    private List<string> formatosFechaDisponibles = new() { "Automático", "dd/MM/yyyy (Día/Mes/Año)", "MM/dd/yyyy (Mes/Día/Año)", "yyyy-MM-dd (Año-Mes-Día)" };
+
+    private List<ForecastResult> resultadosComparativos = new();
+    
+    private List<string> frecuenciasDisponibles = new() { "Diaria", "Mensual", "Anual" };
+    private string frecuenciaSeleccionada = "Diaria";
+    
+    private int zoomPuntosTorneo = 25;
+
+    private void HandleFileFromComponent((byte[] Bytes, string Name) fileData)
+    {
+        fileBytes = fileData.Bytes;
+        fileName = fileData.Name;
+        using var ms = new MemoryStream(fileBytes);
+        columnasDisponibles = DataService.GetHeaders(ms, fileName);
+        columnaFecha = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("fecha") || c.ToLower().Contains("date")) ?? "";
+        columnaValor = columnasDisponibles.FirstOrDefault(c => c.ToLower().Contains("valor") || c.ToLower().Contains("close")) ?? "";
+    }
+    
+    private string FormatoFechaEjeX => frecuenciaSeleccionada switch
+    {
+        "Mensual" => "{0:MMM yyyy}",
+        "Anual" => "{0:yyyy}",
+        _ => "{0:dd/MMM/yy}"
+    };
+
+    private void EjecutarTorneo()
+    {
+        if (fileBytes == null) return;
+        resultadosComparativos.Clear();
+
+        using var ms = new MemoryStream(fileBytes);
+        
+        // 1. Recibimos la Tupla
+        var parseResult = DataService.ParseData(ms, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado, frecuenciaSeleccionada);
+        var historia = parseResult.Datos;
+        
+        // 2. Feedback de Bajas
+        if (parseResult.FilasIgnoradas > 0)
+        {
+            NotificationService.Notify(new NotificationMessage {
+                Severity = NotificationSeverity.Warning,
+                Summary = "Limpieza de Datos",
+                Detail = $"Se ignoraron {parseResult.FilasIgnoradas} filas por no ser legibles.",
+                Duration = 6000
+            });
+        }
+
+        // 3. LA CORRECCIÓN: Evitar el fallo silencioso
+        if (historia.Count < horizonte * 2) 
+        {
+            NotificationService.Notify(new NotificationMessage {
+                Severity = NotificationSeverity.Error,
+                Summary = "Datos Insuficientes",
+                Detail = $"Para simular un horizonte de {horizonte} períodos, necesitas al menos {horizonte * 2} datos históricos consolidados. Tu archivo solo generó {historia.Count} períodos ({frecuenciaSeleccionada}). Reduce el horizonte o sube más datos.",
+                Duration = 8000
+            });
+            return;
+        }
+
+        var entrenamiento = historia.Take(historia.Count - horizonte).ToList();
+        var realidad = historia.Skip(historia.Count - horizonte).Select(d => d.Valor).ToList();
+
+        foreach (var modelo in ModelosPronostico)
+        {
+            var res = modelo.Calculate(historia, horizonte, 5, frecuenciaSeleccionada); 
+            
+            var prueba = modelo.Calculate(entrenamiento, horizonte, 5, frecuenciaSeleccionada);
+            var predicciones = prueba.ForecastedData.Select(d => d.Valor).ToList();
+
+            res.MAE = MetricsHelper.CalculateMAE(realidad, predicciones);
+            res.RMSE = MetricsHelper.CalculateRMSE(realidad, predicciones);
+            res.MAPE = MetricsHelper.CalculateMAPE(realidad, predicciones);
+
+            resultadosComparativos.Add(res);
+        }
+
+        resultadosComparativos = resultadosComparativos.OrderBy(r => r.MAPE).ToList();
+        StateHasChanged();
+    }
+    
+    // Método para exportar el modelo ganador sin backend
+    private async Task ExportarCSV()
+    {
+        if (!resultadosComparativos.Any()) return;
+
+        var modeloGanador = resultadosComparativos.First();
+        var csvContent = new System.Text.StringBuilder();
+        
+        csvContent.AppendLine("Fecha,Valor_Proyectado");
+        
+        foreach (var item in modeloGanador.ForecastedData)
+        {
+            string fecha = item.Fecha.ToString("dd/MM/yyyy");
+            string valor = item.Valor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            csvContent.AppendLine($"{fecha},{valor}");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csvContent.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        
+        string nombreSeguro = modeloGanador.MethodName.Replace(" ", "_");
+        string nombreArchivo = $"Pronostico_Ganador_{nombreSeguro}.csv";
+        
+        string jsScript = "var a = document.createElement('a');" +
+                          $"a.href = 'data:text/csv;base64,{base64}';" +
+                          $"a.download = '{nombreArchivo}';" +
+                          "document.body.appendChild(a);" +
+                          "a.click();" +
+                          "document.body.removeChild(a);";
+        
+        await JS.InvokeVoidAsync("eval", jsScript);
+    }
+    
+    [CascadingParameter(Name = "EsModoOscuro")] 
+    public bool AppEnModoOscuro { get; set; }
+
+    private async Task ConfirmarImpresion()
+    {
+        if (AppEnModoOscuro)
+        {
+            NotificationService.Notify(new NotificationMessage { 
+                Severity = NotificationSeverity.Error, 
+                Summary = "Impresión Bloqueada", 
+                Detail = "Por estándares de calidad, debe cambiar al MODO CLARO para generar el reporte PDF.", 
+                Duration = 6000 
+            });
+            return; 
+        }
+
+        await JS.InvokeVoidAsync("window.print");
+    }
+    
+}
