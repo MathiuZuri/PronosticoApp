@@ -1,0 +1,428 @@
+﻿@page "/analisis-multivariable"
+@using MiAppPronostico.Models
+@using MiAppPronostico.Services.Multivariable
+@using MiAppPronostico.Services.Narrative
+@inject MultivariateDataService DataService
+@inject MultivariateEngine Engine
+@inject NotificationService NotificationService
+@inject MultivariateNarrativeService NarrativeService
+
+<RadzenText TextStyle="TextStyle.H3" Class="rz-mb-4 rz-mt-2" Style="font-weight: 800; letter-spacing: -0.5px;">
+    <RadzenIcon Icon="bubble_chart" Style="font-size: 2.5rem; vertical-align: middle; margin-right: 12px; color: var(--sigepp-primary);" />
+    Análisis Multivariable
+</RadzenText>
+
+@* --- SECCIÓN 1: CARGA DE DATOS --- *@
+<RadzenCard Class="rz-mb-4 rz-p-4">
+    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="color: var(--sigepp-primary); font-weight: 700;">
+        <RadzenIcon Icon="folder_open" Style="vertical-align: middle; margin-right: 8px;" />
+        1. Carga de Dataset
+    </RadzenText>
+
+    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="4">
+            <FileUploader Label="Subir Archivo Excel/CSV" OnFileProcessed="ProcesarArchivo" />
+        </RadzenColumn>
+        
+        <RadzenColumn Size="12" SizeMD="8">
+            @if (datosTotales.Any())
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Success" Variant="Variant.Flat" Shade="Shade.Lighter" Class="rz-m-0">
+                    <strong>Datos cargados exitosamente:</strong> Se detectaron @datosTotales.Count filas.<br/>
+                    <span style="font-size: 0.9em;">Variables Numéricas: @columnasNumericas.Count | Variables Categóricas (Texto): @columnasCategoricas.Count</span>
+                </RadzenAlert>
+            }
+            else
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--sigepp-text-muted);">
+                    Sube un archivo con múltiples columnas. El sistema separará automáticamente los números del texto. No se requiere columna de fecha.
+                </RadzenText>
+            }
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>
+
+@* --- SECCIÓN 2: HERRAMIENTAS ANALÍTICAS --- *@
+@if (datosTotales.Any())
+{
+    <RadzenTabs Class="rz-shadow-3" Style="border-radius: 8px; overflow: hidden;">
+        <Tabs>
+            
+            @* PESTAÑA A: REGRESIÓN MÚLTIPLE *@
+            <RadzenTabsItem Text="Regresión Múltiple" Icon="insights">
+                <div class="rz-p-3">
+                    <RadzenRow Gap="1rem" AlignItems="AlignItems.End" Class="rz-mb-4">
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600;">Variable Dependiente (Y)</RadzenText>
+                            <RadzenDropDown @bind-Value="varDependiente" Data="@columnasNumericas" Placeholder="Ej: Tiempo (ms)..." Class="rz-w-100" />
+                        </RadzenColumn>
+                        
+                        <RadzenColumn Size="12" SizeMD="4">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600;">Variables Independientes (X1, X2...)</RadzenText>
+                            <RadzenDropDown @bind-Value="varsIndependientes" Data="@columnasNumericas" Multiple="true" Placeholder="Selecciona factores..." Class="rz-w-100" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-primary);">Eje X de la Gráfica (Opcional)</RadzenText>
+                            <RadzenDropDown @bind-Value="columnaEjeX" Data="@columnasTotales" Placeholder="Por defecto: N° de Fila" Class="rz-w-100" Clearable="true" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="2">
+                            <RadzenButton Text="CALCULAR" Icon="functions" ButtonStyle="ButtonStyle.Primary" Click="@EjecutarRegresion" 
+                                          Disabled="@(string.IsNullOrEmpty(varDependiente) || !varsIndependientes.Any())" Class="rz-w-100" />
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    @if (resultadoRegresion != null)
+                    {
+                        <RadzenRow Gap="1.5rem" Class="rz-mt-4">
+                            @* Panel Izquierdo: Coeficientes *@
+                            <RadzenColumn Size="12" SizeMD="7">
+                                <RadzenCard Style="background-color: var(--sigepp-bg-alt); border-left: 4px solid var(--sigepp-primary); height: 100%;">
+                                    <RadzenText TextStyle="TextStyle.H6" Style="font-weight: 800; color: var(--sigepp-primary);">Resultados del Modelo Lineal</RadzenText>
+                                    <RadzenRow Gap="1rem" Class="rz-mt-3">
+                                        <RadzenColumn Size="12" SizeMD="4">
+                                            <RadzenCard Class="rz-shadow-1">
+                                                <RadzenText TextStyle="TextStyle.Caption" Style="color: var(--sigepp-text-muted);">R² (Ajuste)</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.H5" Style="font-weight: 800;">@($"{(resultadoRegresion.RSquared * 100):0.02} %")</RadzenText>
+                                            </RadzenCard>
+                                        </RadzenColumn>
+                                        <RadzenColumn Size="12" SizeMD="8">
+                                            <ul style="list-style-type: none; padding: 0; font-size: 0.95em;">
+                                                <li><strong>Base (Intercepto):</strong> @($"{resultadoRegresion.Intercepto:0.04}")</li>
+                                                @foreach (var coef in resultadoRegresion.Coeficientes)
+                                                {
+                                                    <li style="margin-top: 5px;">
+                                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@coef.Key" /> afecta en <strong>@($"{coef.Value:0.04}")</strong>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                </RadzenCard>
+                            </RadzenColumn>
+
+                            @* --- NUEVA FUNCIÓN: SIMULADOR DE PREDICCIONES --- *@
+                            <RadzenColumn Size="12" SizeMD="5">
+                                <RadzenCard Class="rz-shadow-2" Style="border-top: 4px solid var(--sigepp-secondary); height: 100%;">
+                                    <RadzenText TextStyle="TextStyle.H6" Style="font-weight: 800; color: var(--sigepp-secondary);">
+                                        <RadzenIcon Icon="online_prediction" Style="vertical-align:middle; margin-right:6px;"/>
+                                        Simulador de Predicciones
+                                    </RadzenText>
+                                    
+                                    <div class="rz-mt-3" style="max-height: 180px; overflow-y: auto; padding-right: 5px;">
+                                        @foreach (var variable in varsIndependientes)
+                                        {
+                                            <div class="rz-mb-2">
+                                                <RadzenText TextStyle="TextStyle.Caption" Style="font-weight:600; display:block;">Valor para @variable</RadzenText>
+                                                <RadzenNumeric TValue="double" @bind-Value="@valoresSimulacion[variable]" Change="@CalcularPrediccionSimulada" Class="rz-w-100" Size="ButtonSize.Small" />
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="rz-p-2 rz-mt-3" style="background: #eef2f7; border-radius: 6px; text-align: center;">
+                                        <RadzenText TextStyle="TextStyle.Caption" Style="color: var(--sigepp-text-muted); display:block; margin:0;">@varDependiente Estimado</RadzenText>
+                                        <RadzenText TextStyle="TextStyle.H4" Style="font-weight: 900; color: var(--sigepp-primary); margin:0;">
+                                            @($"{valorPredichoSimulacion:0.02}")
+                                        </RadzenText>
+                                    </div>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        @* --- COMPONENTE DE GRÁFICA MULTIVARIABLE CON AJUSTE DE ANCHO DINÁMICO --- *@
+                        @if (datosGrafica.Any())
+                        {
+                            <RadzenCard Class="rz-p-4 rz-mt-4">
+                                <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4" Style="font-weight: 700;">
+                                    <RadzenIcon Icon="show_chart" Style="vertical-align: middle; margin-right: 8px; color: var(--sigepp-primary);" />
+                                    Contraste del Modelo: Valor Real vs. Predicción
+                                </RadzenText>
+
+                                @* --- CONTROL DE ESPACIADO CON SLIDER --- *@
+                                <RadzenRow AlignItems="AlignItems.Center" Class="rz-mb-4" Gap="1rem">
+                                    <RadzenColumn Size="12" SizeMD="5">
+                                        <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-1" Style="font-weight: 600;">
+                                            <RadzenIcon Icon="unfold_more" Style="vertical-align: middle; margin-right: 4px; font-size: 1.2rem; transform: rotate(90deg);" />
+                                            Ajustar Espaciado de Gráfica (Ancho en píxeles)
+                                        </RadzenText>
+                                        <RadzenSlider @bind-Value="@anchoGrafica" Min="600" Max="3000" Step="50" Class="rz-w-100" TValue="int" />
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12" SizeMD="2">
+                                        <div Class="rz-p-2 rz-mt-4" style="background: var(--sigepp-bg-alt); border-radius: 4px; text-align: center; font-weight: bold; font-size: 0.9rem; border: 1px solid var(--sigepp-border);">
+                                            @anchoGrafica px
+                                        </div>
+                                    </RadzenColumn>
+                                </RadzenRow>
+
+                                @* --- CONTENEDOR CON SCROLL HORIZONTAL AUTOMÁTICO --- *@
+                                <div style="overflow-x: auto; width: 100%; border: 1px solid var(--sigepp-border); border-radius: 8px; padding: 15px; background: white;">
+                                    <RadzenChart Style="@($"height: 350px; width: {anchoGrafica}px;")">
+                                        <RadzenLineSeries TItem="MultivariateChartItem" Data="@datosGrafica" CategoryProperty="EjeX" ValueProperty="Real" Title="Valor Real (Histórico)" LineType="LineType.Solid">
+                                            <RadzenMarkers MarkerType="MarkerType.Circle" Size="4" />
+                                        </RadzenLineSeries>
+                                        <RadzenLineSeries TItem="MultivariateChartItem" Data="@datosGrafica" CategoryProperty="EjeX" ValueProperty="Predicho" Title="Predicción del Modelo" LineType="LineType.Dashed" RenderingOrder="1">
+                                            <RadzenMarkers MarkerType="MarkerType.Square" Size="4" />
+                                        </RadzenLineSeries>
+                                        
+                                        <RadzenCategoryAxis Padding="20" />
+                                        
+                                        <RadzenValueAxis>
+                                            <RadzenGridLines Visible="true" />
+                                        </RadzenValueAxis>
+                                    </RadzenChart>
+                                </div>
+                            </RadzenCard>
+                            
+                            @* --- CONTENEDOR DE LA NARRATIVA DE REGRESIÓN --- *@
+                            <RadzenCard Class="rz-mt-3 rz-p-4" Style="background-color: #fafafa; border: 1px dashed #ccc;">
+                                <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight:700; color:var(--sigepp-primary);"><RadzenIcon Icon="description" Style="vertical-align:middle; margin-right:6px;"/> Diagnóstico Ejecutivo Automatizado</RadzenText>
+                                <hr style="border-top:1px solid #eee; margin:10px 0;"/>
+                                <div>
+                                    @((MarkupString)narrativaRegresionHtml)
+                                </div>
+                            </RadzenCard>
+                        }
+                    }
+                </div>
+            </RadzenTabsItem>
+
+            @* PESTAÑA B: MATRIZ DE CONFUSIÓN *@
+            <RadzenTabsItem Text="Matriz de Confusión" Icon="grid_on">
+                <div class="rz-p-3">
+                    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.End" Class="rz-mb-4">
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600;">Realidad (Columna Real)</RadzenText>
+                            <RadzenDropDown @bind-Value="colReal" Data="@columnasTotales" Class="rz-w-100" />
+                        </RadzenColumn>
+                        
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600;">Predicción (Columna Modelo)</RadzenText>
+                            <RadzenDropDown @bind-Value="colPredicha" Data="@columnasTotales" Class="rz-w-100" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600;">¿Cuál es el valor 'Positivo'?</RadzenText>
+                            <RadzenTextBox @bind-Value="valorPositivo" Placeholder="Ej: Carga Crítica" Class="rz-w-100" />
+                        </RadzenColumn>
+
+                        <RadzenColumn Size="12" SizeMD="3">
+                            <RadzenButton Text="EVALUAR" Icon="fact_check" ButtonStyle="ButtonStyle.Secondary" Click="@EjecutarMatriz" 
+                                          Disabled="@(string.IsNullOrEmpty(colReal) || string.IsNullOrEmpty(colPredicha) || string.IsNullOrEmpty(valorPositivo))" Class="rz-w-100" />
+                        </RadzenColumn>
+                    </RadzenRow>
+
+                    @if (resultadoMatriz != null)
+                    {
+                        <RadzenRow Gap="2rem" Class="rz-mt-4">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCard Class="rz-shadow-2">
+                                    <RadzenText TextStyle="TextStyle.H6" Style="text-align: center; font-weight: bold;">Tabla de Confusión</RadzenText>
+                                    <table style="width: 100%; text-align: center; border-collapse: collapse; margin-top: 10px;">
+                                        <tr>
+                                            <td></td>
+                                            <td style="font-weight: bold; padding: 5px; border-bottom: 2px solid var(--sigepp-border);">Predicción Positiva</td>
+                                            <td style="font-weight: bold; padding: 5px; border-bottom: 2px solid var(--sigepp-border);">Predicción Negativa</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold; padding: 5px; border-right: 2px solid var(--sigepp-border);">Realidad Positiva</td>
+                                            <td style="background-color: #d4edda; padding: 10px; border: 1px solid var(--sigepp-border);"><strong>@resultadoMatriz.VerdaderosPositivos</strong><br/><small>Verdadero Positivo</small></td>
+                                            <td style="background-color: #f8d7da; padding: 10px; border: 1px solid var(--sigepp-border);"><strong>@resultadoMatriz.FalsosNegativos</strong><br/><small>Falso Negativo</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold; padding: 5px; border-right: 2px solid var(--sigepp-border);">Realidad Negativa</td>
+                                            <td style="background-color: #f8d7da; padding: 10px; border: 1px solid var(--sigepp-border);"><strong>@resultadoMatriz.FalsosPositivos</strong><br/><small>Falso Positivo</small></td>
+                                            <td style="background-color: #d4edda; padding: 10px; border: 1px solid var(--sigepp-border);"><strong>@resultadoMatriz.VerdaderosNegativos</strong><br/><small>Verdadero Negativo</small></td>
+                                        </tr>
+                                    </table>
+                                </RadzenCard>
+                            </RadzenColumn>
+                            
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCard Class="rz-shadow-1" Style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                    <RadzenText TextStyle="TextStyle.Caption" Style="color: var(--sigepp-text-muted);">Exactitud Total del Modelo</RadzenText>
+                                    <RadzenText TextStyle="TextStyle.H2" Style="font-weight: 900; color: var(--sigepp-primary);">
+                                        @($"{(resultadoMatriz.Exactitud * 100):0.00} %")
+                                    </RadzenText>
+                                    <RadzenText TextStyle="TextStyle.Body2" Style="text-align: center; margin-top: 10px;">
+                                        De @resultadoMatriz.Total casos analizados, el modelo acertó correctamente en @(resultadoMatriz.VerdaderosPositivos + resultadoMatriz.VerdaderosNegativos) ocasiones.
+                                    </RadzenText>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+                        
+                        @* --- CONTENEDOR DE LA NARRATIVA DE LA MATRIZ --- *@
+                        <RadzenCard Class="rz-mt-4 rz-p-4" Style="background-color: #fafafa; border: 1px dashed #ccc;">
+                            <RadzenText TextStyle="TextStyle.Subtitle1" Style="font-weight:700; color:var(--sigepp-primary);"><RadzenIcon Icon="assignment_turned_in" Style="vertical-align:middle; margin-right:6px;"/> Análisis de Matriz e Impacto Operacional</RadzenText>
+                            <hr style="border-top:1px solid #eee; margin:10px 0;"/>
+                            <div>
+                                @((MarkupString)narrativaMatrizHtml)
+                            </div>
+                        </RadzenCard>
+                    }
+                </div>
+            </RadzenTabsItem>
+
+        </Tabs>
+    </RadzenTabs>
+}
+
+@code {
+    private List<MultivariateDataRow> datosTotales = new();
+    private List<string> columnasNumericas = new();
+    private List<string> columnasCategoricas = new();
+    private List<string> columnasTotales = new();
+
+    // Variables Regresión
+    private string varDependiente = "";
+    private IEnumerable<string> varsIndependientes = new List<string>();
+    private string columnaEjeX = ""; // Variable para almacenar la selección del Eje X
+    private RegressionResult? resultadoRegresion;
+    private List<MultivariateChartItem> datosGrafica = new(); // Lista estructurada para la visualización
+
+    // Variables Simulador
+    private Dictionary<string, double> valoresSimulacion = new();
+    private double valorPredichoSimulacion = 0;
+
+    // Variables Matriz de Confusión
+    private string colReal = "";
+    private string colPredicha = "";
+    private string valorPositivo = "";
+    private ConfusionMatrixResult? resultadoMatriz;
+    
+    private int anchoGrafica = 1000;
+    private string narrativaRegresionHtml = "";
+    private string narrativaMatrizHtml = "";
+
+    // Estructura interna auxiliar de mapeo para RadzenChart
+    public class MultivariateChartItem
+    {
+        public string EjeX { get; set; } = "";
+        public double Real { get; set; }
+        public double Predicho { get; set; }
+    }
+
+    private void ProcesarArchivo((byte[] Bytes, string Name) fileData)
+    {
+        try
+        {
+            using var ms = new MemoryStream(fileData.Bytes);
+            datosTotales = DataService.ParsearDatos(ms, fileData.Name);
+
+            if (datosTotales.Any())
+            {
+                var primeraFila = datosTotales.First();
+                columnasNumericas = primeraFila.ValoresNumericos.Keys.ToList();
+                columnasCategoricas = primeraFila.ValoresCategoricos.Keys.ToList();
+                
+                columnasTotales.Clear();
+                columnasTotales.AddRange(columnasNumericas);
+                columnasTotales.AddRange(columnasCategoricas);
+
+                // Limpieza de estados anteriores
+                resultadoRegresion = null;
+                resultadoMatriz = null;
+                datosGrafica.Clear();
+                varsIndependientes = new List<string>();
+                valoresSimulacion.Clear();
+                valorPredichoSimulacion = 0;
+                columnaEjeX = "";
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error de Lectura", ex.Message, 6000);
+        }
+    }
+
+    private void EjecutarRegresion()
+    {
+        try
+        {
+            if (varsIndependientes.Contains(varDependiente))
+            {
+                NotificationService.Notify(NotificationSeverity.Warning, "Confusión Lógica", "La variable dependiente no puede estar también en las independientes.", 5000);
+                return;
+            }
+
+            // 1. Calculamos la regresión robusta con la Pseudo-Inversa
+            resultadoRegresion = Engine.CalcularRegresionMultiple(datosTotales, varDependiente, varsIndependientes.ToList());
+
+            // 2. Inicializar el diccionario de simulación con ceros para las variables elegidas
+            valoresSimulacion = varsIndependientes.ToDictionary(v => v, v => 0.0);
+            CalcularPrediccionSimulada();
+
+            // 3. Mapeamos dinámicamente los datos para renderizar la gráfica lineal
+            var datosValidos = datosTotales.Where(d => 
+                d.ValoresNumericos.ContainsKey(varDependiente) && 
+                varsIndependientes.All(v => d.ValoresNumericos.ContainsKey(v))
+            ).ToList();
+
+            datosGrafica = new List<MultivariateChartItem>();
+
+            for (int i = 0; i < datosValidos.Count; i++)
+            {
+                // Estrategia de fallback: Si no elige Eje X, usamos "Fila N°"
+                string etiquetaEjeX = $"Fila {datosValidos[i].IndiceFila + 1}";
+
+                if (!string.IsNullOrEmpty(columnaEjeX))
+                {
+                    // Intentamos buscar si la columna es de tipo numérico
+                    if (datosValidos[i].ValoresNumericos.TryGetValue(columnaEjeX, out double valNum))
+                    {
+                        etiquetaEjeX = valNum.ToString();
+                    }
+                    // Si no, buscamos si está en las columnas de texto/fecha
+                    else if (datosValidos[i].ValoresCategoricos.TryGetValue(columnaEjeX, out string? valTxt))
+                    {
+                        etiquetaEjeX = valTxt ?? etiquetaEjeX;
+                    }
+                }
+
+                datosGrafica.Add(new MultivariateChartItem
+                {
+                    EjeX = etiquetaEjeX,
+                    Real = datosValidos[i].ValoresNumericos[varDependiente],
+                    Predicho = resultadoRegresion.Predicciones[i]
+                });
+            }
+            narrativaRegresionHtml = NarrativeService.GenerarDiagnosticoRegresion(resultadoRegresion, varDependiente);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error Matemático", ex.Message, 6000);
+        }
+    }
+
+    // CÁLCULO MANUAL SIMULADO EN VIVO (Parte 2 del Script de Python)
+    private void CalcularPrediccionSimulada()
+    {
+        if (resultadoRegresion == null) return;
+
+        // Formula básica: Y = B0 + B1*X1 + B2*X2...
+        double total = resultadoRegresion.Intercepto;
+        foreach (var item in valoresSimulacion)
+        {
+            if (resultadoRegresion.Coeficientes.TryGetValue(item.Key, out double coef))
+            {
+                total += coef * item.Value;
+            }
+        }
+        valorPredichoSimulacion = total;
+    }
+
+    private void EjecutarMatriz()
+    {
+        try
+        {
+            resultadoMatriz = Engine.CalcularMatrizConfusion(datosTotales, colReal, colPredicha, valorPositivo);
+            narrativaMatrizHtml = NarrativeService.GenerarDiagnosticoMatriz(resultadoMatriz);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error Lógico", ex.Message, 6000);
+        }
+        
+    }
+}
