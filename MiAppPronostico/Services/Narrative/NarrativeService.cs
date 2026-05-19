@@ -1,11 +1,21 @@
 ﻿using MiAppPronostico.Models;
-using System.Linq;
-using System;
 
-namespace MiAppPronostico.Services;
+namespace MiAppPronostico.Services.Narrative;
 
 public class NarrativeService
 {
+    // Definimos el glosario como una constante privada para reutilizarlo en ambos lados
+    private const string GlosarioTecnico = @"
+        <hr style='border-top: 1px solid var(--sigepp-border); margin: 15px 0;' />
+        <div style='font-size: 0.85em; color: var(--sigepp-text-muted); line-height: 1.4;'>
+            <strong style='color: var(--sigepp-text);'>📚 Glosario Técnico (Para principiantes):</strong>
+            <ul style='margin-top: 5px; margin-bottom: 0; padding-left: 20px;'>
+                <li style='margin-bottom: 4px;'><strong>Error Medio (MAE):</strong> Mide en <em>unidades reales</em> cuánto se equivocó el modelo en promedio. Si predices ventas de zapatos y tu MAE es 20, significa que el cálculo falló por unas 20 cajas.</li>
+                <li style='margin-bottom: 4px;'><strong>Precisión (RMSE):</strong> Es similar al MAE, pero su fórmula matemática <em>castiga duramente los errores extremos</em>. Si este número es mucho más alto que el MAE, significa que el modelo suele ser bueno, pero a veces tiene días donde falla de forma espectacular.</li>
+                <li><strong>Margen de Error (MAPE):</strong> Es la métrica reina. Expresa el error en <em>porcentaje</em>, lo que lo hace universal. Un MAPE del 10% significa que tus proyecciones tienen una precisión del 90%.</li>
+            </ul>
+        </div>";
+
     public string GenerarInterpretacion(ForecastResult result)
     {
         if (result == null || !result.ForecastedData.Any()) 
@@ -61,6 +71,7 @@ public class NarrativeService
 
         // 4. Explicación simple de las métricas (si existen)
         string explicacionMetricas = "";
+        string glosario = "";
         if (result.MAE > 0)
         {
             explicacionMetricas = $@"
@@ -69,6 +80,9 @@ public class NarrativeService
                     En promedio, nuestras simulaciones fallaron por <strong>{result.MAE:N2} unidades</strong> (Error Medio). 
                     Además, el porcentaje general de equivocación del modelo es del <strong>{result.MAPE:N2}%</strong>.
                 </div>";
+                
+            // Solo agregamos el glosario si hay métricas para explicar
+            glosario = GlosarioTecnico;
         }
 
         // 5. Construcción del mensaje final en HTML
@@ -83,6 +97,7 @@ public class NarrativeService
             <p style='margin-bottom: 0;'><strong>Nivel de confianza en este resultado: {nivelRiesgo}</strong>. <br/>
             {consejo}</p>
             {explicacionMetricas}
+            {glosario}
         ";
     }
 
@@ -106,9 +121,11 @@ public class NarrativeService
                 <li><strong>¿Por qué ganó?:</strong> Su margen de error promedio es de apenas el <strong>{ganador.MAPE:N2}%</strong>.</li>
                 <li><strong>¿Por qué es útil este torneo?:</strong> Si hubieras elegido el peor algoritmo para tu caso (como el {perdedor.MethodName}), tu riesgo de equivocarte habría sido un <strong>{mejoraPorcentual:N2}% mayor</strong>.</li>
             </ul>
-            <p style='margin-top: 10px; font-size: 0.9em; color: var(--sigepp-text-muted);'>
+            <p style='margin-top: 10px; margin-bottom: 15px; font-size: 0.9em; color: var(--sigepp-text-muted);'>
                 <em>Recomendación: Regresa al 'Panel de Pronósticos' y selecciona este modelo ganador para exportar tus datos finales.</em>
             </p>
+            
+            {GlosarioTecnico}
         ";
     }
 }

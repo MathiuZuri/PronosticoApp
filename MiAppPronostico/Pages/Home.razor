@@ -3,7 +3,7 @@
 @using MiAppPronostico.Services.Forecasting
 @using MiAppPronostico.Models
 @inject NotificationService NotificationService
-
+@inject TooltipService TooltipService
 @inject DataService DataService
 @inject IEnumerable<IForecastModel> ModelosPronostico
 
@@ -60,30 +60,40 @@
 
     <RadzenRow Gap="1.5rem" AlignItems="AlignItems.End">
         
-        <RadzenColumn Size="12" SizeMD="4">
+        <RadzenColumn Size="12" SizeMD="3">
             <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
                 Algoritmo Estadístico
             </RadzenText>
             <RadzenDropDown @bind-Value="metodoSeleccionado" Data="@nombresModelos" Class="rz-w-100" />
         </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Frecuencia
+            </RadzenText>
+            <RadzenDropDown @bind-Value="frecuenciaSeleccionada" Data="@frecuenciasDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
         
         <RadzenColumn Size="12" SizeMD="2">
             <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
-                Horizonte (Días)
+                Horizonte (Períodos)
             </RadzenText>
             <RadzenNumeric @bind-Value="horizonte" Min="1" Max="365" Class="rz-w-100" />
         </RadzenColumn>
 
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
-                Ventana / Estacionalidad
+        @* --- MEJORA UX: CAMPO VENTANA CON AYUDA VISUAL --- *@
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted); display: flex; align-items: center;">
+                Ventana
+                <RadzenIcon Icon="help_outline" Style="font-size: 1rem; margin-left: 4px; color: var(--sigepp-primary); cursor: pointer;" 
+                            MouseEnter="@(args => ShowTooltip(args, ObtenerAyudaVentana()))" />
             </RadzenText>
             <RadzenNumeric @bind-Value="parametroExtra" Min="2" Max="365" Class="rz-w-100" 
                            Disabled="@(!RequiereParametroExtra())" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="3">
-            <RadzenButton Text="EJECUTAR PRONÓSTICO" Icon="auto_graph" ButtonStyle="ButtonStyle.Primary" 
+            <RadzenButton Text="EJECUTAR" Icon="auto_graph" ButtonStyle="ButtonStyle.Primary" 
                           Click="@EjecutarPronostico" Class="rz-w-100 rz-p-3" 
                           Disabled="@(!SePuedeCalcular())" Style="font-weight: bold; letter-spacing: 0.5px;" />
         </RadzenColumn>
@@ -92,7 +102,7 @@
 </RadzenCard>
 
 @* --- TARJETA 3: VISUALIZACIÓN Y TABLAS (Componente Modular) --- *@
-<ForecastChart Resultado="@resultadoPronostico" />
+<ForecastChart Resultado="@resultadoPronostico" Frecuencia="@frecuenciaSeleccionada" />
 
 @if (resultadoPronostico != null)
 {
@@ -107,6 +117,9 @@
     private string columnaFecha = string.Empty;
     private string columnaValor = string.Empty;
 
+    private List<string> frecuenciasDisponibles = new() { "Diaria", "Mensual", "Anual" };
+    private string frecuenciaSeleccionada = "Diaria";
+    
     private List<string> formatosFechaDisponibles = new() 
     { 
         "Automático", "dd/MM/yyyy (Día/Mes/Año)", "MM/dd/yyyy (Mes/Día/Año)", "yyyy-MM-dd (Año-Mes-Día)", "d/M/yyyy (Días/Meses sin cero)"
@@ -124,6 +137,24 @@
     {
         nombresModelos = ModelosPronostico.Select(m => m.Name).ToList();
         metodoSeleccionado = nombresModelos.FirstOrDefault() ?? string.Empty;
+    }
+    
+    // Método para mostrar el globo de ayuda (Tooltip)
+    private void ShowTooltip(ElementReference elementReference, string message)
+    {
+        TooltipService.Open(elementReference, message, new TooltipOptions { Position = TooltipPosition.Top, Duration = 4000 });
+    }
+
+    // Lógica dinámica: Qué mensaje mostrar según el algoritmo elegido
+    private string ObtenerAyudaVentana()
+    {
+        if (metodoSeleccionado.Contains("Móvil"))
+            return "Indica cuántos períodos pasados promediar. Ej: Si pones 5, el pronóstico de mañana será el promedio de los últimos 5 días.";
+            
+        if (metodoSeleccionado.Contains("Estacional"))
+            return "Indica la duración de tu ciclo. Ej: Si tus ventas suben cada fin de semana, pon 7. El modelo copiará lo que pasó hace 7 días.";
+
+        return "Este modelo matemático no requiere una ventana. Se calcula automáticamente usando toda tu historia o el último dato disponible.";
     }
 
     private void HandleFileFromComponent((byte[] Bytes, string Name) fileData)
@@ -152,7 +183,7 @@
 
     private bool SePuedeCalcular() => !string.IsNullOrEmpty(columnaFecha) && !string.IsNullOrEmpty(columnaValor) && fileBytes != null;
 
-private void EjecutarPronostico()
+    private void EjecutarPronostico()
     {
         if (fileBytes == null) return;
 
@@ -161,7 +192,7 @@ private void EjecutarPronostico()
             using var memoryStream = new MemoryStream(fileBytes);
             
             // 1. Recibimos la nueva Tupla del DataService
-            var parseResult = DataService.ParseData(memoryStream, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+            var parseResult = DataService.ParseData(memoryStream, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado, frecuenciaSeleccionada);
             var datosHistoricos = parseResult.Datos;
             
             if (datosHistoricos.Count == 0) return;
@@ -180,7 +211,8 @@ private void EjecutarPronostico()
             var modeloElegido = ModelosPronostico.First(m => m.Name == metodoSeleccionado);
             int? param = RequiereParametroExtra() ? parametroExtra : null;
             
-            resultadoPronostico = modeloElegido.Calculate(datosHistoricos, horizonte, param);
+            // CORRECCIÓN: Pasar frecuenciaSeleccionada al modelo
+            resultadoPronostico = modeloElegido.Calculate(datosHistoricos, horizonte, param, frecuenciaSeleccionada);
             
             int diasPrueba = horizonte;
             if (datosHistoricos.Count > diasPrueba * 2)
@@ -188,7 +220,8 @@ private void EjecutarPronostico()
                 var datosEntrenamiento = datosHistoricos.Take(datosHistoricos.Count - diasPrueba).ToList();
                 var datosReales = datosHistoricos.Skip(datosHistoricos.Count - diasPrueba).Select(d => d.Valor).ToList();
 
-                var prueba = modeloElegido.Calculate(datosEntrenamiento, diasPrueba, param);
+                // CORRECCIÓN: Pasar frecuenciaSeleccionada también a la prueba
+                var prueba = modeloElegido.Calculate(datosEntrenamiento, diasPrueba, param, frecuenciaSeleccionada);
                 var predicciones = prueba.ForecastedData.Select(d => d.Valor).ToList();
 
                 resultadoPronostico.MAE = MetricsHelper.CalculateMAE(datosReales, predicciones);

@@ -6,7 +6,7 @@ public class NaiveModel : IForecastModel
 {
     public string Name => "Método Ingenuo";
 
-    public ForecastResult Calculate(List<DataPoint> data, int horizon, int? seasonality = null)
+    public ForecastResult Calculate(List<DataPoint> data, int horizon, int? seasonality = null, string frecuencia = "Diaria")
     {
         var result = new ForecastResult { MethodName = Name, HistoricalData = data };
         if (data == null || !data.Any()) return result;
@@ -16,9 +16,16 @@ public class NaiveModel : IForecastModel
 
         for (int i = 1; i <= horizon; i++)
         {
+            DateTime futureDate = frecuencia switch
+            {
+                "Mensual" => lastDate.AddMonths(i),
+                "Anual" => lastDate.AddYears(i),
+                _ => lastDate.AddDays(i)
+            };
+
             result.ForecastedData.Add(new DataPoint
             {
-                Fecha = lastDate.AddDays(i),
+                Fecha = futureDate,
                 Valor = lastValue
             });
         }

@@ -20,16 +20,23 @@
         Configuración de Simulación
     </RadzenText>
 
-    <RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
+<RadzenRow Gap="1.5rem" AlignItems="AlignItems.Center">
         <RadzenColumn Size="12" SizeMD="3">
             <FileUploader Label="Datos para Torneo" OnFileProcessed="HandleFileFromComponent" />
         </RadzenColumn>
 
-        <RadzenColumn Size="12" SizeMD="3">
+        <RadzenColumn Size="12" SizeMD="2">
             <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
                 Formato Fecha
             </RadzenText>
             <RadzenDropDown @bind-Value="formatoFechaSeleccionado" Data="@formatosFechaDisponibles" Class="rz-w-100" />
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="2">
+            <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
+                Frecuencia
+            </RadzenText>
+            <RadzenDropDown @bind-Value="frecuenciaSeleccionada" Data="@frecuenciasDisponibles" Class="rz-w-100" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="2">
@@ -39,15 +46,15 @@
             <RadzenDropDown @bind-Value="columnaValor" Data="@columnasDisponibles" Placeholder="Valor..." Class="rz-w-100" />
         </RadzenColumn>
 
-        <RadzenColumn Size="12" SizeMD="2">
+        <RadzenColumn Size="12" SizeMD="1">
             <RadzenText TextStyle="TextStyle.Subtitle2" Class="rz-mb-2" Style="font-weight: 600; color: var(--sigepp-text-muted);">
-                Horizonte
+                Períodos
             </RadzenText>
             <RadzenNumeric @bind-Value="horizonte" Min="1" Class="rz-w-100" />
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="2">
-            <RadzenButton Text="INICIAR TORNEO" Icon="rocket_launch" ButtonStyle="ButtonStyle.Primary" 
+            <RadzenButton Text="TORNEO" Icon="rocket_launch" ButtonStyle="ButtonStyle.Primary" 
                           Click="@EjecutarTorneo" Class="rz-w-100 rz-p-3" 
                           Disabled="@(fileBytes == null || string.IsNullOrEmpty(columnaValor))" 
                           Style="font-weight: bold; letter-spacing: 0.5px;" />
@@ -130,55 +137,63 @@
                     Simulación Multilineal
                 </RadzenText>
                 
-                @* --- SECCIÓN 3: COMPARATIVA VISUAL --- *@
-                @* Estilo seguro para forzar el color de los textos sin romper las coordenadas *@
-                <style>
-                    .fix-grafico .rz-tick-text {
-                        fill: var(--sigepp-text, #333) !important;
-                        font-weight: 600;
-                    }
-                </style>
+                    @* --- SECCIÓN 3.1: COMPARATIVA VISUAL --- *@
+                    <style>
+                        .fix-grafico .rz-tick-text {
+                            fill: var(--sigepp-text, #333) !important;
+                            font-weight: 600;
+                        }
+                    </style>
 
-                <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem;">
-                
-                    @{
-                        // Lógica simplificada: Le damos 25 píxeles de espacio a CADA punto.
-                        // Al ser tan ancha, Radzen acomoda las fechas solo, sin amontonarlas.
-                        var historiaReal = resultadosComparativos.First().HistoricalData;
-                        var pronostico = resultadosComparativos.First().ForecastedData;
-                        
-                        int totalPuntos = historiaReal.Count + (pronostico?.Count ?? 0);
-                        int anchoDinamico = Math.Max(850, totalPuntos * 25);
-                    }
+                    @* --- NUEVO: CONTROL DE ZOOM --- *@
+                    <div class="rz-p-2 rz-mb-2" style="background-color: var(--sigepp-bg-alt); border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                        <RadzenText TextStyle="TextStyle.Subtitle2" Style="margin: 0; font-weight: 600; color: var(--sigepp-text-muted);">
+                            <RadzenIcon Icon="zoom_in" Style="vertical-align: middle;" /> Distancia entre puntos:
+                        </RadzenText>
+                        <RadzenSlider @bind-Value="zoomPuntosTorneo" Min="5" Max="100" Step="5" Style="flex-grow: 1; max-width: 300px;" />
+                        <RadzenText TextStyle="TextStyle.Caption" Style="margin: 0; font-weight: bold; color: var(--sigepp-primary);">
+                            @zoomPuntosTorneo px
+                        </RadzenText>
+                    </div>
 
-                    <RadzenChart Style="@($"height: 450px; min-width: {anchoDinamico}px;")">
-                    
-                        <RadzenLineSeries Smooth="true" Data="@resultadosComparativos.First().HistoricalData" 
-                                          CategoryProperty="Fecha" Title="Historia Real" ValueProperty="Valor" Stroke="var(--sigepp-text)">
-                            <RadzenMarkers MarkerType="MarkerType.Circle" Size="3" />
-                        </RadzenLineSeries>
-                    
-                        @foreach (var res in resultadosComparativos)
-                        {
-                            <RadzenLineSeries Smooth="true" Data="@res.ForecastedData" 
-                                              CategoryProperty="Fecha" Title="@res.MethodName" ValueProperty="Valor" />
+                    <div class="fix-grafico" style="width: 100%; max-width: 100vw; overflow-x: auto; -webkit-overflow-scrolling: touch; background-color: var(--sigepp-bg); border-radius: 8px; padding: 1rem;">
+
+                        @{
+                            // El ancho ahora depende del slider (zoomPuntosTorneo)
+                            var historiaReal = resultadosComparativos.First().HistoricalData;
+                            var pronostico = resultadosComparativos.First().ForecastedData;
+                            
+                            int totalPuntos = historiaReal.Count + (pronostico?.Count ?? 0);
+                            int anchoDinamico = Math.Max(850, totalPuntos * zoomPuntosTorneo);
                         }
 
-                        @* Ejes limpios y nativos, el CSS se encarga del color *@
-                        <RadzenCategoryAxis Padding="30" FormatString="{0:dd/MMM/yy}">
-                            <RadzenGridLines Visible="false" />
-                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
-                        </RadzenCategoryAxis>
+                        <RadzenChart Style="@($"height: 450px; min-width: {anchoDinamico}px;")">
+                        
+                            <RadzenLineSeries Smooth="true" Data="@resultadosComparativos.First().HistoricalData" 
+                                              CategoryProperty="Fecha" Title="Historia Real" ValueProperty="Valor" Stroke="var(--sigepp-text)">
+                                <RadzenMarkers MarkerType="MarkerType.Circle" Size="3" />
+                            </RadzenLineSeries>
+                        
+                            @foreach (var res in resultadosComparativos)
+                            {
+                                <RadzenLineSeries Smooth="true" Data="@res.ForecastedData" 
+                                                  CategoryProperty="Fecha" Title="@res.MethodName" ValueProperty="Valor" />
+                            }
 
-                        <RadzenValueAxis>
-                            <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
-                            <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
-                        </RadzenValueAxis>
-                    
-                        <RadzenLegend Position="LegendPosition.Bottom" />
-                        <RadzenChartTooltipOptions Shared="true" />
-                    </RadzenChart>
-                </div>
+                            <RadzenCategoryAxis Padding="30" FormatString="@FormatoFechaEjeX">
+                                <RadzenGridLines Visible="false" />
+                                <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                            </RadzenCategoryAxis>
+
+                            <RadzenValueAxis>
+                                <RadzenGridLines Visible="true" Stroke="var(--sigepp-border)" />
+                                <RadzenAxisLines Visible="true" Stroke="var(--sigepp-border)" />
+                            </RadzenValueAxis>
+                        
+                            <RadzenLegend Position="LegendPosition.Bottom" />
+                            <RadzenChartTooltipOptions Shared="true" />
+                        </RadzenChart>
+                    </div>
             </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
@@ -209,6 +224,17 @@
     private List<string> formatosFechaDisponibles = new() { "Automático", "dd/MM/yyyy (Día/Mes/Año)", "MM/dd/yyyy (Mes/Día/Año)", "yyyy-MM-dd (Año-Mes-Día)" };
 
     private List<ForecastResult> resultadosComparativos = new();
+    
+    private List<string> frecuenciasDisponibles = new() { "Diaria", "Mensual", "Anual" };
+    private string frecuenciaSeleccionada = "Diaria";
+    private int zoomPuntosTorneo = 25;
+    
+    private string FormatoFechaEjeX => frecuenciaSeleccionada switch
+    {
+        "Mensual" => "{0:MMM yyyy}",
+        "Anual" => "{0:yyyy}",
+        _ => "{0:dd/MMM/yy}"
+    };
 
     private void HandleFileFromComponent((byte[] Bytes, string Name) fileData)
     {
@@ -228,11 +254,9 @@ private void EjecutarTorneo()
         using var ms = new MemoryStream(fileBytes);
         
         // 1. Recibimos la Tupla
-        var parseResult = DataService.ParseData(ms, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado);
+        var parseResult = DataService.ParseData(ms, fileName, columnaFecha, columnaValor, formatoFechaSeleccionado, frecuenciaSeleccionada);
         var historia = parseResult.Datos;
         
-        if (historia.Count < horizonte * 2) return;
-
         // 2. Feedback de Bajas
         if (parseResult.FilasIgnoradas > 0)
         {
@@ -244,14 +268,26 @@ private void EjecutarTorneo()
             });
         }
 
+        // 3. LA CORRECCIÓN: Evitar el fallo silencioso
+        if (historia.Count < horizonte * 2) 
+        {
+            NotificationService.Notify(new NotificationMessage {
+                Severity = NotificationSeverity.Error,
+                Summary = "Datos Insuficientes",
+                Detail = $"Para simular un horizonte de {horizonte} períodos, necesitas al menos {horizonte * 2} datos históricos consolidados. Tu archivo solo generó {historia.Count} períodos ({frecuenciaSeleccionada}). Reduce el horizonte o sube más datos.",
+                Duration = 8000
+            });
+            return;
+        }
+
         var entrenamiento = historia.Take(historia.Count - horizonte).ToList();
         var realidad = historia.Skip(historia.Count - horizonte).Select(d => d.Valor).ToList();
 
         foreach (var modelo in ModelosPronostico)
         {
-            var res = modelo.Calculate(historia, horizonte, 5); 
+            var res = modelo.Calculate(historia, horizonte, 5, frecuenciaSeleccionada); 
             
-            var prueba = modelo.Calculate(entrenamiento, horizonte, 5);
+            var prueba = modelo.Calculate(entrenamiento, horizonte, 5, frecuenciaSeleccionada);
             var predicciones = prueba.ForecastedData.Select(d => d.Valor).ToList();
 
             res.MAE = MetricsHelper.CalculateMAE(realidad, predicciones);

@@ -1,10 +1,11 @@
-﻿namespace MiAppPronostico.Services;
-using MiAppPronostico.Models;
+﻿using MiAppPronostico.Models;
+
+namespace MiAppPronostico.Services.Forecasting;
 
 public interface IForecastModel
 {
     string Name { get; }
 
-    // El método principal que recibirá los datos y devolverá la proyección
-    ForecastResult Calculate(List<DataPoint> data, int horizon, int? seasonality = null);
+    // Añadimos el parámetro de frecuencia al final
+    ForecastResult Calculate(List<DataPoint> data, int horizon, int? seasonality = null, string frecuencia = "Diaria");
 }

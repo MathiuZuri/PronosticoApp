@@ -87,8 +87,8 @@ public class DataService
         return headers;
     }
 
-    // MEJORA 1: Lectura Row-by-Row sin AsDataSet()
-    public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Stream fileStream, string fileName, string dateColumnName, string valueColumnName, string explicitDateFormat = "Automático")
+    // Añadimos el parámetro "frecuencia" con valor por defecto "Diaria"
+    public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Stream fileStream, string fileName, string dateColumnName, string valueColumnName, string explicitDateFormat = "Automático", string frecuencia = "Diaria")
     {
         var rawDataPoints = new List<DataPoint>();
         int filasIgnoradas = 0;
@@ -96,7 +96,6 @@ public class DataService
 
         using (var reader = GetReader(fileStream, fileName))
         {
-            // 1. Ubicar los índices de las columnas en la primera fila (Cabeceras)
             int dateColIdx = -1;
             int valueColIdx = -1;
 
@@ -115,11 +114,9 @@ public class DataService
                 throw new Exception("Las columnas seleccionadas no existen en el archivo.");
             }
 
-            // 2. Leer fila por fila directamente del Stream (Ultra ligero en RAM)
             while (reader.Read())
             {
                 totalFilas++;
-                
                 try
                 {
                     var cellDate = reader.GetValue(dateColIdx);
@@ -128,11 +125,7 @@ public class DataService
                     if (cellDate != null && cellValue != null)
                     {
                         var valorLimpio = ParsearNumeroRobusto(cellValue.ToString());
-                        if (valorLimpio == null)
-                        {
-                            filasIgnoradas++;
-                            continue; 
-                        }
+                        if (valorLimpio == null) { filasIgnoradas++; continue; }
                         
                         double valorFinal = valorLimpio.Value;
                         DateTime fechaFinal = DateTime.MinValue;
@@ -140,13 +133,11 @@ public class DataService
 
                         if (cellDate is DateTime dt)
                         {
-                            fechaFinal = dt; 
-                            fechaEsValida = true;
+                            fechaFinal = dt; fechaEsValida = true;
                         }
                         else
                         {
                             string dateString = cellDate.ToString()!.Replace("\"", "").Trim();
-
                             if (explicitDateFormat != "Automático")
                             {
                                 string formatCode = explicitDateFormat.Split(' ')[0];
@@ -154,61 +145,40 @@ public class DataService
                             }
                             else
                             {
-                                string[] formatosComunes = { 
-                                    "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", 
-                                    "M/d/yyyy", "d/M/yyyy", "yyyy/MM/dd",
-                                    "dd.MM.yyyy", "MM.dd.yyyy" 
-                                };
-                                
-                                fechaEsValida = DateTime.TryParseExact(dateString, formatosComunes, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal) || 
-                                                DateTime.TryParse(dateString, CultureInfo.CurrentCulture, DateTimeStyles.None, out fechaFinal);
+                                string[] formatosComunes = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "M/d/yyyy", "d/M/yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "MM.dd.yyyy" };
+                                fechaEsValida = DateTime.TryParseExact(dateString, formatosComunes, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal) || DateTime.TryParse(dateString, CultureInfo.CurrentCulture, DateTimeStyles.None, out fechaFinal);
                             }
                         }
 
                         if (fechaEsValida && fechaFinal.Year >= 1900)
                         {
-                            // Guardamos solo la parte de la fecha (ignoramos horas/minutos para agrupar mejor)
-                            rawDataPoints.Add(new DataPoint
-                            {
-                                Fecha = fechaFinal.Date,
-                                Valor = valorFinal
-                            });
+                            rawDataPoints.Add(new DataPoint { Fecha = fechaFinal.Date, Valor = valorFinal });
                         }
-                        else
-                        {
-                            filasIgnoradas++;
-                        }
+                        else { filasIgnoradas++; }
                     }
-                    else
-                    {
-                        filasIgnoradas++;
-                    }
+                    else { filasIgnoradas++; }
                 }
-                catch 
-                { 
-                    filasIgnoradas++;
-                    continue; 
-                }
+                catch { filasIgnoradas++; continue; }
             }
         }
         
-        // MEJORA 2: Agrupación y promedio de fechas duplicadas
+        // LA MAGIA DE LA GRANULARIDAD OCURRE AQUÍ
         var datosAgrupados = rawDataPoints
-            .GroupBy(d => d.Fecha)
+            .GroupBy(d => {
+                // Redondeamos la fecha al inicio de su período según lo elegido
+                if (frecuencia == "Mensual") return new DateTime(d.Fecha.Year, d.Fecha.Month, 1);
+                if (frecuencia == "Anual") return new DateTime(d.Fecha.Year, 1, 1);
+                return d.Fecha.Date; // Por defecto es Diaria
+            })
             .Select(grupo => new DataPoint
             {
                 Fecha = grupo.Key,
-                Valor = grupo.Average(x => x.Valor) // Si hay 2 ventas el mismo día, saca el promedio
+                // Usamos SUM() para totalizar meses/años. Si prefieres promedios, cámbialo a Average().
+                Valor = grupo.Sum(x => x.Valor) 
             })
             .OrderBy(d => d.Fecha)
             .ToList();
 
-        // Calculamos cuántos registros se fusionaron por ser del mismo día
-        int filasFusionadas = rawDataPoints.Count - datosAgrupados.Count;
-        
-        // Puedes sumar las fusionadas a las ignoradas si quieres reflejarlo en la UI, 
-        // o simplemente devolver la lista procesada.
-        
         return (datosAgrupados, filasIgnoradas, totalFilas);
     }
 }
