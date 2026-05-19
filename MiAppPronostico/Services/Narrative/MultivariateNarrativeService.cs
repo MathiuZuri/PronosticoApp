@@ -12,7 +12,7 @@ public class MultivariateNarrativeService
         double r2Porcentaje = resultado.RSquared * 100;
 
         sb.Append("<div class='rz-p-2'>");
-        sb.Append($"<p style='font-size:1.1em; margin-bottom:12px;'>El modelo analítico diseñado para evaluar <strong>{varDependiente}</strong> presenta un Coeficiente de Determinación <strong>(R²) de {r2Porcentaje:0.02}%</strong>.</p>");
+        sb.Append($"<p style='font-size:1.1em; margin-bottom:12px;'>El modelo analítico diseñado para evaluar <strong>{varDependiente}</strong> presenta un Coeficiente de Determinación <strong>(R²) de {r2Porcentaje:0.00}%</strong>.</p>");
 
         // Diagnóstico según el umbral de R²
         if (resultado.RSquared >= 0.90)
@@ -68,7 +68,7 @@ public class MultivariateNarrativeService
         double exactitudPorcentaje = resultado.Exactitud * 100;
 
         sb.Append("<div class='rz-p-2'>");
-        sb.Append($"<p style='font-size:1.1em; margin-bottom:12px;'>La evaluación del modelo de clasificación para el evento objetivo <strong>'{resultado.ClasePositiva}'</strong> arrojó una <strong>Exactitud (Accuracy) del {exactitudPorcentaje:0.02}%</strong>, resolviendo de forma correcta <strong>{resultado.VerdaderosPositivos + resultado.VerdaderosNegativos}</strong> de los <strong>{resultado.Total}</strong> escenarios evaluados.</p>");
+        sb.Append($"<p style='font-size:1.1em; margin-bottom:12px;'>La evaluación del modelo de clasificación para el evento objetivo <strong>'{resultado.ClasePositiva}'</strong> arrojó una <strong>Exactitud (Accuracy) del {exactitudPorcentaje:0.00}%</strong>, resolviendo de forma correcta <strong>{resultado.VerdaderosPositivos + resultado.VerdaderosNegativos}</strong> de los <strong>{resultado.Total}</strong> escenarios evaluados.</p>");
 
         sb.Append("<h5 style='font-weight:700; color:var(--sigepp-primary); margin-top:15px;'>🚨 Análisis de Riesgos e Impacto Operacional:</h5>");
         sb.Append("<ul>");
