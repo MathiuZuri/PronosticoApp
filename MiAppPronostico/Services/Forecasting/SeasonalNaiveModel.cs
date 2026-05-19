@@ -21,10 +21,12 @@ public class SeasonalNaiveModel : IForecastModel
             int indexToCopy = data.Count - m + ((i - 1) % m);
             double valueToCopy = data[indexToCopy].Valor;
 
+            // SOPORTE SECUENCIAL AÑADIDO
             DateTime futureDate = frecuencia switch
             {
                 "Mensual" => lastDate.AddMonths(i),
                 "Anual" => lastDate.AddYears(i),
+                "Secuencial" => lastDate.AddDays(i),
                 _ => lastDate.AddDays(i)
             };
 

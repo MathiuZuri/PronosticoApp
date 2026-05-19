@@ -21,10 +21,12 @@ public class MovingAverageModel : IForecastModel
         {
             double currentAverage = movingWindow.Average();
             
+            // SOPORTE SECUENCIAL AÑADIDO
             DateTime futureDate = frecuencia switch
             {
                 "Mensual" => lastDate.AddMonths(i),
                 "Anual" => lastDate.AddYears(i),
+                "Secuencial" => lastDate.AddDays(i), 
                 _ => lastDate.AddDays(i)
             };
             

@@ -21,11 +21,12 @@ public class DriftModel : IForecastModel
         {
             double forecastValue = lastValue + i * ((lastValue - firstValue) / (n - 1));
 
-            // Lógica dinámica de salto temporal
+            // SOPORTE SECUENCIAL AÑADIDO
             DateTime futureDate = frecuencia switch
             {
                 "Mensual" => lastDate.AddMonths(i),
                 "Anual" => lastDate.AddYears(i),
+                "Secuencial" => lastDate.AddDays(i), // Un día representa un "Paso lógico"
                 _ => lastDate.AddDays(i)
             };
 

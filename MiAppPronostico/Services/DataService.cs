@@ -22,7 +22,7 @@ public class DataService
         return ExcelReaderFactory.CreateReader(fileStream);
     }
 
-    // MEJORA 3: Sanitización financiera avanzada
+    // Sanitización financiera avanzada
     private double? ParsearNumeroRobusto(string? valorCelda)
     {
         if (string.IsNullOrWhiteSpace(valorCelda)) return null;
@@ -36,7 +36,6 @@ public class DataService
         }
 
         // Limpieza de símbolos de moneda, comillas, porcentajes y espacios
-        // Eliminamos $, S/ (Soles), €, etc.
         limpio = limpio.Replace("\"", "")
                        .Replace("%", "")
                        .Replace("$", "")
@@ -87,12 +86,13 @@ public class DataService
         return headers;
     }
 
-    // Añadimos el parámetro "frecuencia" con valor por defecto "Diaria"
+    // ParseData con soporte para "Secuencial" (Sin Fechas)
     public (List<DataPoint> Datos, int FilasIgnoradas, int TotalFilas) ParseData(Stream fileStream, string fileName, string dateColumnName, string valueColumnName, string explicitDateFormat = "Automático", string frecuencia = "Diaria")
     {
         var rawDataPoints = new List<DataPoint>();
         int filasIgnoradas = 0;
         int totalFilas = 0;
+        int contadorPasoLogico = 1; // Contador para la inyección de fechas falsas
 
         using (var reader = GetReader(fileStream, fileName))
         {
@@ -104,14 +104,22 @@ public class DataService
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
                     var header = reader.GetValue(i)?.ToString()?.Trim();
-                    if (header == dateColumnName) dateColIdx = i;
-                    if (header == valueColumnName) valueColIdx = i;
+                    
+                    // Si es secuencial, permitimos que el nombre de la columna de fecha esté vacío o no exista
+                    if (!string.IsNullOrEmpty(dateColumnName) && header == dateColumnName) dateColIdx = i;
+                    if (!string.IsNullOrEmpty(valueColumnName) && header == valueColumnName) valueColIdx = i;
                 }
             }
 
-            if (dateColIdx == -1 || valueColIdx == -1)
+            if (valueColIdx == -1)
             {
-                throw new Exception("Las columnas seleccionadas no existen en el archivo.");
+                throw new Exception("La columna de valores seleccionada no existe en el archivo.");
+            }
+
+            // Validación estricta solo si no estamos en modo Secuencial
+            if (frecuencia != "Secuencial" && dateColIdx == -1)
+            {
+                throw new Exception("La columna de fechas seleccionada no existe en el archivo.");
             }
 
             while (reader.Read())
@@ -119,10 +127,9 @@ public class DataService
                 totalFilas++;
                 try
                 {
-                    var cellDate = reader.GetValue(dateColIdx);
                     var cellValue = reader.GetValue(valueColIdx);
 
-                    if (cellDate != null && cellValue != null)
+                    if (cellValue != null)
                     {
                         var valorLimpio = ParsearNumeroRobusto(cellValue.ToString());
                         if (valorLimpio == null) { filasIgnoradas++; continue; }
@@ -131,22 +138,39 @@ public class DataService
                         DateTime fechaFinal = DateTime.MinValue;
                         bool fechaEsValida = false;
 
-                        if (cellDate is DateTime dt)
+                        // INYECCIÓN DE SECUENCIA LÓGICA (DUMMY INDEXING)
+                        if (frecuencia == "Secuencial")
                         {
-                            fechaFinal = dt; fechaEsValida = true;
+                            // Inyectamos una fecha base (ej. año 2000) sumando el paso lógico.
+                            // Esto asegura que la distancia entre puntos sea exactamente "1 unidad".
+                            fechaFinal = new DateTime(2000, 1, 1).AddDays(contadorPasoLogico);
+                            fechaEsValida = true;
+                            contadorPasoLogico++;
                         }
                         else
                         {
-                            string dateString = cellDate.ToString()!.Replace("\"", "").Trim();
-                            if (explicitDateFormat != "Automático")
+                            // Lógica normal de extracción de fechas
+                            var cellDate = reader.GetValue(dateColIdx);
+                            if (cellDate != null)
                             {
-                                string formatCode = explicitDateFormat.Split(' ')[0];
-                                fechaEsValida = DateTime.TryParseExact(dateString, formatCode, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal);
-                            }
-                            else
-                            {
-                                string[] formatosComunes = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "M/d/yyyy", "d/M/yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "MM.dd.yyyy" };
-                                fechaEsValida = DateTime.TryParseExact(dateString, formatosComunes, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal) || DateTime.TryParse(dateString, CultureInfo.CurrentCulture, DateTimeStyles.None, out fechaFinal);
+                                if (cellDate is DateTime dt)
+                                {
+                                    fechaFinal = dt; fechaEsValida = true;
+                                }
+                                else
+                                {
+                                    string dateString = cellDate.ToString()!.Replace("\"", "").Trim();
+                                    if (explicitDateFormat != "Automático")
+                                    {
+                                        string formatCode = explicitDateFormat.Split(' ')[0];
+                                        fechaEsValida = DateTime.TryParseExact(dateString, formatCode, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal);
+                                    }
+                                    else
+                                    {
+                                        string[] formatosComunes = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "M/d/yyyy", "d/M/yyyy", "yyyy/MM/dd", "dd.MM.yyyy", "MM.dd.yyyy" };
+                                        fechaEsValida = DateTime.TryParseExact(dateString, formatosComunes, CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaFinal) || DateTime.TryParse(dateString, CultureInfo.CurrentCulture, DateTimeStyles.None, out fechaFinal);
+                                    }
+                                }
                             }
                         }
 
@@ -162,10 +186,9 @@ public class DataService
             }
         }
         
-        // LA MAGIA DE LA GRANULARIDAD OCURRE AQUÍ
         var datosAgrupados = rawDataPoints
             .GroupBy(d => {
-                // Redondeamos la fecha al inicio de su período según lo elegido
+                if (frecuencia == "Secuencial") return d.Fecha; // No agrupa, respeta cada fila individual
                 if (frecuencia == "Mensual") return new DateTime(d.Fecha.Year, d.Fecha.Month, 1);
                 if (frecuencia == "Anual") return new DateTime(d.Fecha.Year, 1, 1);
                 return d.Fecha.Date; // Por defecto es Diaria
@@ -173,7 +196,6 @@ public class DataService
             .Select(grupo => new DataPoint
             {
                 Fecha = grupo.Key,
-                // Usamos SUM() para totalizar meses/años. Si prefieres promedios, cámbialo a Average().
                 Valor = grupo.Sum(x => x.Valor) 
             })
             .OrderBy(d => d.Fecha)
